@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useSearchParams } from "next/navigation"
@@ -230,7 +230,7 @@ const CURRICULUM_DATA = {
 
 const CONTENT_GENERATION_TIMEOUT_MS = 180000
 
-export default function DemoLearnPage() {
+function DemoLearnContent() {
   const searchParams = useSearchParams()
   const [selectedStandard, setSelectedStandard] = useState("")
   const [selectedSubject, setSelectedSubject] = useState("")
@@ -849,5 +849,24 @@ export default function DemoLearnPage() {
         </div>
       </footer>
     </div>
+  )
+}
+function PageLoading() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center">
+        <Hand className="w-7 h-7 text-primary-foreground" />
+      </div>
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <p className="text-muted-foreground">Loading lesson content...</p>
+    </div>
+  )
+}
+
+export default function DemoLearnPage() {
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <DemoLearnContent />
+    </Suspense>
   )
 }

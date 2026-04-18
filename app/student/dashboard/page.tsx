@@ -9,7 +9,9 @@ import { VICStudentDashboard } from "@/components/vic-student-dashboard"
 import { Loader2, Hand } from "lucide-react"
 import { isFigmaMockRequest, mockStudentDisplayName } from "@/lib/figma-mock-data"
 
-export default function StudentDashboardPage() {
+import { Suspense } from "react"
+
+function StudentDashboardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(true)
@@ -52,15 +54,7 @@ export default function StudentDashboardPage() {
   }, [router, searchParams])
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center">
-          <Hand className="w-7 h-7 text-primary-foreground" />
-        </div>
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Loading your dashboard...</p>
-      </div>
-    )
+    return <DashboardLoading />
   }
 
   return (
@@ -94,5 +88,25 @@ export default function StudentDashboardPage() {
         <VICStudentDashboard onClose={() => router.push("/")} />
       </main>
     </div>
+  )
+}
+
+function DashboardLoading() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center">
+        <Hand className="w-7 h-7 text-primary-foreground" />
+      </div>
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <p className="text-muted-foreground">Loading your dashboard...</p>
+    </div>
+  )
+}
+
+export default function StudentDashboardPage() {
+  return (
+    <Suspense fallback={<DashboardLoading />}>
+      <StudentDashboardContent />
+    </Suspense>
   )
 }
