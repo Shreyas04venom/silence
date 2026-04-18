@@ -1,0 +1,49 @@
+# dependencies
+/node_modules
+/.pnpm-store
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+/dist
+
+# datasets (Large Files)
+/Dataset/
+/public/dataset/*.csv
+/public/dataset/*.CSV
+/public/dataset/sign_mnist*
+
+# python/backend (Large Files)
+**/venv/
+**/__pycache__/
+*.pyc
+local-video-backend/venv/
+
+# debug and logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+
+# env files
+.env*
+!**/.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# generated assets
+/public/generated-videos/
+/local-video-backend/generated/
+
+# system files
+.DS_Store
+Thumbs.db
