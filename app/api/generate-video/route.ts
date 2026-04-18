@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { Buffer } from "node:buffer"
 import { generateAnimationStoryboard, generateEducationalContent } from "@/lib/google-ai-services"
 import { generateVideoFromLocalBackend, hasLocalVideoBackend } from "@/lib/local-video-backend"
 import { resolveTopicAssets } from "@/lib/topic-assets"
@@ -30,7 +31,7 @@ function buildVideoResponse(
 
   if (!range) {
     headers.set("Content-Length", String(total))
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers,
     })
@@ -42,19 +43,22 @@ function buildVideoResponse(
     return new NextResponse(null, { status: 416, headers })
   }
 
-  const start = match[1] ? Number(match[1]) : 0
-  const end = match[2] ? Number(match[2]) : total - 1
+  // FIX: Properly handle empty range ends (e.g. bytes=0-)
+  const start = match[1] ? Number(parseInt(match[1], 10)) : 0
+  const end = (match[2] && match[2] !== "") ? Number(parseInt(match[2], 10)) : total - 1
 
-  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end < start || start >= total) {
+  if (isNaN(start) || isNaN(end) || start < 0 || end < start || start >= total) {
     headers.set("Content-Range", `bytes */${total}`)
     return new NextResponse(null, { status: 416, headers })
   }
 
-  const chunk = buffer.subarray(start, Math.min(end, total - 1) + 1)
+  const chunkEnd = Math.min(end, total - 1)
+  const chunk = buffer.subarray(start, chunkEnd + 1)
+  
   headers.set("Content-Length", String(chunk.length))
-  headers.set("Content-Range", `bytes ${start}-${start + chunk.length - 1}/${total}`)
+  headers.set("Content-Range", `bytes ${start}-${chunkEnd}/${total}`)
 
-  return new NextResponse(chunk, {
+  return new NextResponse(new Uint8Array(chunk), {
     status: 206,
     headers,
   })
@@ -97,6 +101,7 @@ export async function GET(request: NextRequest) {
       content.visualTranscript,
     )
 
+    // Attempt Local GPU Backend first
     if (hasLocalVideoBackend()) {
       try {
         const localVideo = await generateVideoFromLocalBackend({
@@ -119,15 +124,12 @@ export async function GET(request: NextRequest) {
           )
         }
       } catch (localError) {
-        console.warn("[Video Generation] Local backend failed:", localError)
-        if (topicAssets.animationUrl) {
-          const message = localError instanceof Error ? localError.message : "Local video backend failed"
-          return createFallbackResponse(message, topicAssets.animationUrl)
-        }
-        throw localError
+        console.warn("[Video Generation] Local backend failed, falling back to cloud:", localError)
+        // If local fails, we don't return here—we let it fall through to Cloud Veo
       }
     }
 
+    // Fallback/Main Cloud Backend (Google Veo)
     try {
       const video = await generateEducationalVideo({
         topic,
