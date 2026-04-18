@@ -5,7 +5,7 @@ import { resolveTopicAssets } from "@/lib/topic-assets"
 import { generateEducationalVideo, getCachedGeneratedVideo, saveGeneratedVideoToCache } from "@/lib/veo-video"
 
 export const runtime = "nodejs"
-export const maxDuration = 360
+export const maxDuration = 300
 
 function toFileName(topic: string): string {
   return `${topic.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "lesson"}.mp4`
