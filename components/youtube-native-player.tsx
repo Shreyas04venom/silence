@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, useCallback } from "react"
-import { Play, Pause, Maximize, RotateCcw, Volume2, VolumeX } from "lucide-react"
+import { Play, Pause, Maximize, RotateCcw, Volume2, VolumeX, Subtitles } from "lucide-react"
 
 interface YouTubeNativePlayerProps {
   videoId: string
@@ -92,6 +92,7 @@ export function YouTubeNativePlayer({
   const [isEnded,   setIsEnded]   = useState(false)
   const [curTime,   setCurTime]   = useState(startSeconds)
   const [isMouseActive, setIsMouseActive] = useState(false)
+  const [captionsEnabled, setCaptionsEnabled] = useState(false) // Caption state
 
   const playerId = `yt-p-${videoId}-${Math.floor(startSeconds)}`
   const clipLen  = Math.max(1, endSeconds - startSeconds)
@@ -162,7 +163,8 @@ export function YouTubeNativePlayer({
           end:            Math.ceil(endSeconds),
           origin:         typeof window !== "undefined" ? window.location.origin : "",
           enablejsapi:    1,
-          cc_load_policy: 0,
+          cc_load_policy: 0, // Start with captions off (user can enable)
+          cc_lang_pref:   "en", // Prefer English captions
           hl:             "en",
           vq:             "hd1080", // Request higher quality resolution
         },
@@ -235,6 +237,57 @@ export function YouTubeNativePlayer({
     if (!p) return
     if (isMuted) { p.unMute(); setIsMuted(false) }
     else          { p.mute();   setIsMuted(true)  }
+  }
+
+  const toggleCaptions = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const p = playerRef.current
+    if (!p) return
+    
+    try {
+      // Get available caption tracks
+      const options = p.getOptions()
+      const captionModule = options?.includes('captions') || options?.includes('cc')
+      
+      if (captionModule) {
+        if (captionsEnabled) {
+          // Turn off captions
+          p.unloadModule('captions')
+          p.unloadModule('cc')
+          setCaptionsEnabled(false)
+          console.log('[YTPlayer] Captions disabled')
+        } else {
+          // Turn on captions - try to load English captions
+          p.loadModule('captions')
+          p.loadModule('cc')
+          
+          // Set caption track to English if available
+          try {
+            const tracks = p.getOption('captions', 'tracklist') || []
+            const enTrack = tracks.find((t: any) => 
+              t.languageCode === 'en' || 
+              t.languageCode === 'en-US' ||
+              t.languageCode === 'en-GB'
+            )
+            if (enTrack) {
+              p.setOption('captions', 'track', enTrack)
+            } else if (tracks.length > 0) {
+              // Fallback to first available track
+              p.setOption('captions', 'track', tracks[0])
+            }
+          } catch (err) {
+            console.warn('[YTPlayer] Could not set caption track:', err)
+          }
+          
+          setCaptionsEnabled(true)
+          console.log('[YTPlayer] Captions enabled')
+        }
+      } else {
+        console.warn('[YTPlayer] Captions not available for this video')
+      }
+    } catch (err) {
+      console.error('[YTPlayer] Error toggling captions:', err)
+    }
   }
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -441,8 +494,22 @@ export function YouTubeNativePlayer({
           <button
             className="text-white hover:text-emerald-300 transition-colors p-1"
             onClick={toggleMute}
+            title={isMuted ? "Unmute" : "Mute"}
           >
             {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+          </button>
+
+          {/* captions/subtitles toggle */}
+          <button
+            className={`transition-colors p-1 ${
+              captionsEnabled 
+                ? "text-emerald-400 hover:text-emerald-300" 
+                : "text-white/70 hover:text-white"
+            }`}
+            onClick={toggleCaptions}
+            title={captionsEnabled ? "Turn off captions" : "Turn on captions"}
+          >
+            <Subtitles className="w-5 h-5" />
           </button>
 
           {/* time counter */}
