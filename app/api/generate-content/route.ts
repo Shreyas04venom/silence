@@ -152,11 +152,62 @@ export async function POST(request: NextRequest) {
     let imageUrl = matchedAssets.imageUrl;
     let usedSearchEngine = false;
 
-    // ALWAYS use AI-generated SVG diagrams (same as localhost behavior)
-    // This ensures consistent high-quality educational diagrams in both localhost and Vercel
+    // Priority 1: Pre-generated assets
+    // Priority 2: DuckDuckGo image search (real educational images)
+    // Priority 3: AI-generated SVG diagrams
     if (!imageUrl) {
-      console.log("[Generate Content] Using AI image generator for educational diagram");
-      imageUrl = `/api/generate-image?prompt=${encodeURIComponent(generatedContent.imagePrompt)}&topic=${encodeURIComponent(topic)}`;
+      try {
+        console.log("[Generate Content] Fetching educational image from DuckDuckGo Image Search...");
+        const searchQuery = `${topic} educational diagram labeled visual explanation`;
+        const q = encodeURIComponent(searchQuery);
+        
+        // 1. Fetch DuckDuckGo HTML to extract the VQD token
+        const htmlRes = await fetch(`https://duckduckgo.com/?q=${q}&t=h_&iar=images&iax=images&ia=images`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          }
+        });
+        const htmlText = await htmlRes.text();
+        const vqdMatch = htmlText.match(/vqd=([\d-]+)/);
+        
+        if (vqdMatch && vqdMatch[1]) {
+          // 2. Fetch the actual JSON image payload using the token
+          const vqd = vqdMatch[1];
+          const imgRes = await fetch(`https://duckduckgo.com/i.js?l=us-en&o=json&q=${q}&vqd=${vqd}&f=,,,&p=1`, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+          });
+          const imgData = await imgRes.json();
+          
+          if (imgData.results && imgData.results.length > 0) {
+            // Try to find the best educational image
+            const educationalImage = imgData.results.find((img: any) => 
+              img.image && (
+                img.title?.toLowerCase().includes('diagram') ||
+                img.title?.toLowerCase().includes('education') ||
+                img.title?.toLowerCase().includes(topic.toLowerCase())
+              )
+            ) || imgData.results[0];
+            
+            imageUrl = educationalImage.image;
+            usedSearchEngine = true;
+            console.log("[Generate Content] ✅ Found educational image via DuckDuckGo:", imageUrl);
+          } else {
+            console.log("[Generate Content] No images found in DuckDuckGo results.");
+          }
+        } else {
+          console.warn("[Generate Content] Could not extract DuckDuckGo VQD token.");
+        }
+      } catch (err) {
+        console.error("[Generate Content] DuckDuckGo image search error:", err);
+      }
+      
+      // Fallback to AI-generated SVG if DuckDuckGo search fails
+      if (!imageUrl) {
+         console.log("[Generate Content] Falling back to AI-generated SVG diagram");
+         imageUrl = `/api/generate-image?prompt=${encodeURIComponent(generatedContent.imagePrompt)}&topic=${encodeURIComponent(topic)}`;
+      }
     }
 
     console.log("[Generate Content] Image URL:", imageUrl, matchedAssets.imageUrl ? "(pre-generated)" : "(dynamic)")
