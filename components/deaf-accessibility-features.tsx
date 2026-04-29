@@ -74,20 +74,20 @@ export function DeafAccessibilityFeatures({
         )}
 
         {activeTab === "sign" && (() => {
-          // Validate SVG has real drawn content (not empty or text description)
-          const hasValidSignSVG = signLanguageSVG &&
-            signLanguageSVG.trim().startsWith('<') &&
-            (signLanguageSVG.includes('<ellipse') || signLanguageSVG.includes('<rect') ||
-             signLanguageSVG.includes('<circle') || signLanguageSVG.includes('<path')) &&
-            signLanguageSVG.length > 150
+          // Validate sign language content (HTML with real ASL images from dataset)
+          const hasValidSignContent = signLanguageSVG &&
+            signLanguageSVG.trim().length > 100 &&
+            (signLanguageSVG.includes('amer_sign2.png') || // Real ASL dataset images
+             signLanguageSVG.includes('<ellipse') || signLanguageSVG.includes('<rect') ||
+             signLanguageSVG.includes('<circle') || signLanguageSVG.includes('<path'))
 
-          return hasValidSignSVG ? (
+          return hasValidSignContent ? (
             <div className="space-y-4">
-              <div className="bg-white p-6 rounded-lg border border-border flex justify-center items-center min-h-[250px]">
-                {/* Safe render of SVG since it comes from our AI prompt instructions */}
-                <div dangerouslySetInnerHTML={{ __html: signLanguageSVG }} className="w-full max-w-2xl flex justify-center" />
+              <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-6 rounded-lg border border-purple-200 flex justify-center items-center min-h-[250px]">
+                {/* Render HTML with real ASL images from dataset */}
+                <div dangerouslySetInnerHTML={{ __html: signLanguageSVG }} className="w-full flex justify-center" />
               </div>
-              <p className="text-center text-sm text-muted-foreground">Step-by-step ASL sign language guide for &quot;{topic}&quot;</p>
+              <p className="text-center text-sm text-muted-foreground">✋ Real American Sign Language fingerspelling from dataset</p>
             </div>
           ) : (
             /* Fallback: show a beautiful styled card explaining the sign concept */
