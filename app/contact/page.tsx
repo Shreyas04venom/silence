@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Hand, ArrowLeft, Mail, Phone, MapPin, MessageCircle, Send } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import emailjs from '@emailjs/browser'
 
 export default function ContactPage() {
   const { toast } = useToast()
@@ -19,20 +20,73 @@ export default function ContactPage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Initialize EmailJS
+  useEffect(() => {
+    emailjs.init("template_mgzb2bl") // Your public key
+  }, [])
+
+  const sendEmail = async (data: typeof formData) => {
+    try {
+      // Send to ADMIN
+      await emailjs.send(
+        "service_e25hvxf",
+        "contact_to_admin",
+        {
+          name: data.name,
+          email: data.email,
+          subject: data.subject,
+          message: data.message,
+        }
+      )
+
+      // Auto reply to USER
+      await emailjs.send(
+        "service_e25hvxf",
+        "auto_reply_user",
+        {
+          name: data.name,
+          email: data.email,
+          subject: data.subject,
+          message: data.message,
+        }
+      )
+
+      return true
+    } catch (error) {
+      console.error("EmailJS Error:", error)
+      return false
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    toast({
-      title: "Message Sent!",
-      description: "We'll get back to you within 24 hours.",
-    })
-    
-    setFormData({ name: "", email: "", subject: "", message: "" })
-    setIsSubmitting(false)
+    try {
+      const success = await sendEmail(formData)
+      
+      if (success) {
+        toast({
+          title: "Message Sent Successfully!",
+          description: "We'll get back to you within 24 hours. Check your email for confirmation.",
+        })
+        setFormData({ name: "", email: "", subject: "", message: "" })
+      } else {
+        toast({
+          title: "Failed to Send Message",
+          description: "Please try again or contact us via WhatsApp.",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
