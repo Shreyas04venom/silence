@@ -297,8 +297,8 @@ export default function TermsOfServicePage() {
               <div className="space-y-2">
                 <p>
                   <strong>Email:</strong>{" "}
-                  <a href="mailto:legal@silentclassrooms.com" className="text-primary hover:underline">
-                    legal@silentclassrooms.com
+                  <a href="mailto:shreyasmahajan0306@gmail.com" className="text-primary hover:underline">
+                    shreyasmahajan0306@gmail.com
                   </a>
                 </p>
                 <p>
