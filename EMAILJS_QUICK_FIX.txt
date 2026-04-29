@@ -1,0 +1,66 @@
+╔══════════════════════════════════════════════════════════════╗
+║          EmailJS Contact Form - QUICK FIX NEEDED            ║
+╚══════════════════════════════════════════════════════════════╝
+
+⚠️  ERROR: 400 Bad Request from EmailJS
+⚠️  CAUSE: Missing or incorrect Public Key
+
+┌──────────────────────────────────────────────────────────────┐
+│  FIX IN 3 STEPS:                                             │
+└──────────────────────────────────────────────────────────────┘
+
+1️⃣  GET YOUR PUBLIC KEY
+   → Go to: https://dashboard.emailjs.com/admin/account
+   → Copy your Public Key (looks like: user_xxxxx or random string)
+
+2️⃣  UPDATE THE CODE
+   → Open: app/contact/page.tsx
+   → Find line 26: emailjs.init("YOUR_PUBLIC_KEY")
+   → Replace "YOUR_PUBLIC_KEY" with your actual key
+   → Save the file
+
+3️⃣  RESTART & TEST
+   → Stop dev server (Ctrl+C)
+   → Run: npm run dev
+   → Go to: http://localhost:3001/contact
+   → Test the form
+
+┌──────────────────────────────────────────────────────────────┐
+│  CURRENT CONFIGURATION:                                      │
+└──────────────────────────────────────────────────────────────┘
+
+Service ID:        service_e25hvxf
+Admin Template:    template_mgzb2bl
+User Template:     template_4rz3bmg
+Admin Email:       shreyasmahajan0306@gmail.com
+Public Key:        ⚠️  NEEDS TO BE ADDED
+
+┌──────────────────────────────────────────────────────────────┐
+│  VERIFY TEMPLATE IDs:                                        │
+└──────────────────────────────────────────────────────────────┘
+
+If your EmailJS templates have different IDs:
+→ Update lines 34 and 45 in app/contact/page.tsx
+
+┌──────────────────────────────────────────────────────────────┐
+│  AFTER FIXING:                                               │
+└──────────────────────────────────────────────────────────────┘
+
+✅ Form will send 2 emails:
+   1. To admin (shreyasmahajan0306@gmail.com)
+   2. Auto-reply to user
+
+✅ Success toast will appear
+✅ Form will reset automatically
+
+┌──────────────────────────────────────────────────────────────┐
+│  NEED HELP?                                                  │
+└──────────────────────────────────────────────────────────────┘
+
+📖 Full guide: EMAILJS_SETUP.md
+📱 WhatsApp: +91 7507075722
+📧 Email: shreyasmahajan0306@gmail.com
+
+╔══════════════════════════════════════════════════════════════╗
+║  Don't forget to add your PUBLIC KEY in step 2!             ║
+╚══════════════════════════════════════════════════════════════╝

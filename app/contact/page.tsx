@@ -20,40 +20,76 @@ export default function ContactPage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Initialize EmailJS
+  // Initialize EmailJS with your PUBLIC KEY from environment variables
   useEffect(() => {
-    emailjs.init("template_mgzb2bl") // Your public key
+    const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY
+    
+    if (!publicKey || publicKey === 'YOUR_PUBLIC_KEY_HERE') {
+      console.error('⚠️ EmailJS Public Key is missing!')
+      console.error('👉 Add your key to .env.local file')
+      console.error('👉 Get it from: https://dashboard.emailjs.com/admin/account')
+      return
+    }
+    
+    emailjs.init(publicKey)
+    console.log('✅ EmailJS initialized successfully')
   }, [])
 
   const sendEmail = async (data: typeof formData) => {
+    const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID
+    const adminTemplate = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ADMIN
+    const userTemplate = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_USER
+    
+    // Validate configuration
+    if (!serviceId || !adminTemplate || !userTemplate) {
+      console.error('❌ EmailJS configuration is incomplete in .env.local')
+      return false
+    }
+    
     try {
+      console.log('📧 Sending email to admin...')
+      
       // Send to ADMIN
       await emailjs.send(
-        "service_e25hvxf",
-        "contact_to_admin",
+        serviceId,
+        adminTemplate,
         {
           name: data.name,
           email: data.email,
           subject: data.subject,
           message: data.message,
+          to_email: "shreyasmahajan0306@gmail.com"
         }
       )
+      
+      console.log('✅ Admin email sent successfully')
+      console.log('📧 Sending auto-reply to user...')
 
       // Auto reply to USER
       await emailjs.send(
-        "service_e25hvxf",
-        "auto_reply_user",
+        serviceId,
+        userTemplate,
         {
           name: data.name,
+          to_name: data.name,
           email: data.email,
           subject: data.subject,
           message: data.message,
+          reply_to: data.email
         }
       )
-
+      
+      console.log('✅ User auto-reply sent successfully')
       return true
-    } catch (error) {
-      console.error("EmailJS Error:", error)
+    } catch (error: any) {
+      console.error("❌ EmailJS Error:", error)
+      console.error("Error details:", error.text || error.message)
+      
+      if (error.text?.includes('Public Key')) {
+        console.error('👉 Fix: Add your EmailJS Public Key to .env.local')
+        console.error('👉 Get it from: https://dashboard.emailjs.com/admin/account')
+      }
+      
       return false
     }
   }
