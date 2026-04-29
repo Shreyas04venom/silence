@@ -7,13 +7,14 @@ export const maxDuration = 120
 
 function generateDatasetSignLanguageSVG(topicStr: string) {
   // Extract words and letters. Allow spaces, exclude everything else.
+  // J and Z are excluded as they require motion in ASL
   const cleanTopic = topicStr.toUpperCase().replace(/[^A-IK-Y ]/g, '').replace(/\s+/g, ' ').trim();
-  const words = cleanTopic.split(' ').slice(0, 6); // Support multiple words
+  const words = cleanTopic.split(' ').filter(Boolean).slice(0, 6); // Support multiple words
   
   if (words.length === 0 || !cleanTopic) return ''; 
 
-  // amer_sign2.png contains 6 columns and 4 rows.
-  // We use CSS percentage positioning to flawlessly slice the uniform grid.
+  // amer_sign2.png contains 6 columns and 4 rows (24 letters total, excluding J and Z)
+  // Grid layout: A-F (row 0), G-M (row 1), N-S (row 2), T-Y (row 3)
   const letterMap: Record<string, {col: number, row: number}> = {
     'A': {col: 0, row: 0}, 'B': {col: 1, row: 0}, 'C': {col: 2, row: 0}, 'D': {col: 3, row: 0}, 'E': {col: 4, row: 0}, 'F': {col: 5, row: 0},
     'G': {col: 0, row: 1}, 'H': {col: 1, row: 1}, 'I': {col: 2, row: 1}, 'K': {col: 3, row: 1}, 'L': {col: 4, row: 1}, 'M': {col: 5, row: 1},
@@ -22,45 +23,84 @@ function generateDatasetSignLanguageSVG(topicStr: string) {
   };
 
   let htmlContent = `
-<div style="width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem 0;">
-  <h3 style="font-size: 1.5rem; font-weight: bold; color: #0f172a; margin-bottom: 0.25rem; text-align: center;">Fingerspelling: "${topicStr.toUpperCase()}"</h3>
-  <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 2.5rem; text-align: center;">Visually isolated dynamically using dataset: amer_sign2.png</p>
-  <div style="display: flex; flex-wrap: wrap; gap: 3rem; justify-content: center; max-width: 100%;">
+<div style="width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+  <div style="background: white; border-radius: 1rem; padding: 2rem; width: 100%; max-width: 1200px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <h3 style="font-size: 2rem; font-weight: bold; color: #1e293b; margin-bottom: 0.5rem; text-align: center; text-transform: uppercase;">
+      ✋ American Sign Language Fingerspelling ✋
+    </h3>
+    <p style="font-size: 1.125rem; color: #475569; margin-bottom: 0.5rem; text-align: center; font-weight: 600;">
+      "${topicStr.toUpperCase()}"
+    </p>
+    <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 2rem; text-align: center;">
+      Real ASL hand signs from dataset: amer_sign2.png
+    </p>
+    
+    <div style="display: flex; flex-direction: column; gap: 2.5rem; align-items: center; width: 100%;">
 `;
 
-  words.forEach((word) => {
-    // Add a flex container for each individual word
-    htmlContent += `\n<div style="display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center;">`;
-    const letters = word.split('').slice(0, 16); 
-    letters.forEach((letter) => {
-      const loc = letterMap[letter] || letterMap['A'];
+  words.forEach((word, wordIndex) => {
+    const letters = word.split('').slice(0, 20); // Max 20 letters per word
+    
+    htmlContent += `
+      <div style="width: 100%;">
+        <div style="text-align: center; margin-bottom: 1rem;">
+          <span style="font-size: 1.25rem; font-weight: bold; color: #6366f1; background: #e0e7ff; padding: 0.5rem 1.5rem; border-radius: 0.5rem; display: inline-block;">
+            ${wordIndex > 0 ? `Word ${wordIndex + 1}: ` : ''}${word}
+          </span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; padding: 1rem; background: #f8fafc; border-radius: 0.75rem; border: 2px solid #e2e8f0;">
+`;
+    
+    letters.forEach((letter, letterIndex) => {
+      const loc = letterMap[letter];
       
-      // Perfect percentage bounding box logic (6 columns, 4 rows)
-      // Percentage = col index / (total columns - 1) * 100
-      const posX = loc.col * 20; // 100 / 5 = 20
-      const posY = loc.row * 33.3333; // 100 / 3 = 33.3333
+      if (!loc) {
+        // Letter not in map (J or Z) - skip it
+        return;
+      }
+      
+      // Calculate exact background position for sprite sheet
+      // 6 columns (0-5), 4 rows (0-3)
+      const posX = loc.col * 20; // 100 / 5 = 20% per column
+      const posY = loc.row * 33.3333; // 100 / 3 = 33.33% per row
       
       htmlContent += `
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem; padding: 0.4rem; background: rgba(255, 255, 255, 0.9); border: 1px solid #cbd5e1; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-        <div style="
-          width: 94px; 
-          height: 100px; 
-          background-image: url('/dataset/amer_sign2.png');
-          background-size: 600% 400%;
-          background-position: ${posX}% ${posY}%;
-          background-repeat: no-repeat;
-          border-radius: 0.5rem;
-          box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-        "></div>
-        <span style="font-size: 1.25rem; font-weight: 800; color: #1e293b;">${letter}</span>
-      </div>`;
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0.75rem; background: white; border: 2px solid #cbd5e1; border-radius: 1rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); transition: transform 0.2s; min-width: 110px;">
+            <div style="
+              width: 100px; 
+              height: 110px; 
+              background-image: url('/dataset/amer_sign2.png');
+              background-size: 600% 400%;
+              background-position: ${posX}% ${posY}%;
+              background-repeat: no-repeat;
+              border-radius: 0.5rem;
+              border: 1px solid #e2e8f0;
+              box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            "></div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem;">
+              <span style="font-size: 1.5rem; font-weight: 900; color: #1e293b; font-family: 'Arial Black', sans-serif;">${letter}</span>
+              <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Position ${letterIndex + 1}</span>
+            </div>
+          </div>`;
     });
-    htmlContent += `</div>`;
+    
+    htmlContent += `
+        </div>
+      </div>`;
   });
 
   htmlContent += `
+    </div>
+    
+    <div style="margin-top: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 0.75rem; border: 2px solid #fbbf24;">
+      <p style="font-size: 0.875rem; color: #78350f; text-align: center; margin: 0; font-weight: 600;">
+        ⚠️ Note: Letters J and Z are not shown as they require fluid hand movement in American Sign Language
+      </p>
+      <p style="font-size: 0.75rem; color: #92400e; text-align: center; margin-top: 0.5rem; margin-bottom: 0;">
+        All other letters (A-I, K-Y) are displayed using real ASL hand signs
+      </p>
+    </div>
   </div>
-  <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 2.5rem; text-align: center;">* Note: J and Z are excluded in this dataset as they require fluid hand movement.</p>
 </div>
 `;
   return htmlContent;
