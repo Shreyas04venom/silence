@@ -311,42 +311,81 @@ export function VICStudentDashboard({ onClose, isTeacher = false }: StudentDashb
                         {activeTab === "videos" && (
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Educational Animations</CardTitle>
+                                    <CardTitle>Educational Videos & Animations</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    {selectedSession.animationUrl ? (
-                                        <div className="space-y-4">
-                                            <div className="relative w-full rounded-lg overflow-hidden bg-black border shadow-inner" style={{ paddingBottom: '75.56%' }}>
-                                                <GeneratedAnimationPlayer src={selectedSession.animationUrl} title="Lesson Animation" />
-                                            </div>
-                                        </div>
-                                    ) : selectedSession.animationCode || (selectedSession.animations && selectedSession.animations.length > 0) ? (
-                                        <div className="space-y-4">
-                                            {(selectedSession.animationCode ? [selectedSession.animationCode] : selectedSession.animations || []).map((animCode, idx) => (
-                                                <div key={idx} className="border rounded-lg overflow-hidden">
-                                                    <div className="relative w-full aspect-video bg-white">
-                                                        <iframe
-                                                            srcDoc={animCode.includes('<html>') ? animCode : `
-                                                                <html>
-                                                                <head>
-                                                                    <style>body { margin: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; }</style>
-                                                                </head>
-                                                                <body>
-                                                                    ${animCode}
-                                                                </body>
-                                                                </html>
-                                                            `}
-                                                            className="w-full h-full border-0"
-                                                            title={`Animation ${idx + 1}`}
-                                                            sandbox="allow-scripts"
-                                                        />
+                                    <div className="space-y-6">
+                                        {/* YouTube Videos */}
+                                        {selectedSession.accessibility?.signLanguageData && selectedSession.accessibility.signLanguageData.length > 0 && (
+                                            <div className="space-y-4">
+                                                <h3 className="font-semibold text-lg">Educational Videos</h3>
+                                                {selectedSession.accessibility.signLanguageData.map((videoData: any, idx: number) => (
+                                                    <div key={idx} className="space-y-3">
+                                                        <div className="aspect-video rounded-lg overflow-hidden bg-black">
+                                                            <iframe
+                                                                src={`https://www.youtube.com/embed/${videoData.videoId}?start=${Math.floor(videoData.startSeconds || 0)}&end=${Math.floor(videoData.endSeconds || 0)}`}
+                                                                title={videoData.title || "Educational video"}
+                                                                className="w-full h-full"
+                                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                allowFullScreen
+                                                            />
+                                                        </div>
+                                                        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border">
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-semibold truncate">{videoData.title}</p>
+                                                                <p className="text-xs text-muted-foreground mt-0.5">{videoData.channelTitle}</p>
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground shrink-0">
+                                                                🎯 {Math.round((videoData.endSeconds || 0) - (videoData.startSeconds || 0))}s clip
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-center py-8 text-muted-foreground">No animations in this session</p>
-                                    )}
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Animations */}
+                                        {(selectedSession.animationUrl || selectedSession.animationCode || (selectedSession.animations && selectedSession.animations.length > 0)) && (
+                                            <div className="space-y-4">
+                                                <h3 className="font-semibold text-lg">Animations</h3>
+                                                {selectedSession.animationUrl ? (
+                                                    <div className="relative w-full rounded-lg overflow-hidden bg-black border shadow-inner" style={{ paddingBottom: '75.56%' }}>
+                                                        <GeneratedAnimationPlayer src={selectedSession.animationUrl} title="Lesson Animation" />
+                                                    </div>
+                                                ) : (
+                                                    (selectedSession.animationCode ? [selectedSession.animationCode] : selectedSession.animations || []).map((animCode, idx) => (
+                                                        <div key={idx} className="border rounded-lg overflow-hidden">
+                                                            <div className="relative w-full aspect-video bg-white">
+                                                                <iframe
+                                                                    srcDoc={animCode.includes('<html>') ? animCode : `
+                                                                        <html>
+                                                                        <head>
+                                                                            <style>body { margin: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; }</style>
+                                                                        </head>
+                                                                        <body>
+                                                                            ${animCode}
+                                                                        </body>
+                                                                        </html>
+                                                                    `}
+                                                                    className="w-full h-full border-0"
+                                                                    title={`Animation ${idx + 1}`}
+                                                                    sandbox="allow-scripts"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* No content message */}
+                                        {!selectedSession.accessibility?.signLanguageData?.length && 
+                                         !selectedSession.animationUrl && 
+                                         !selectedSession.animationCode && 
+                                         (!selectedSession.animations || selectedSession.animations.length === 0) && (
+                                            <p className="text-center py-8 text-muted-foreground">No videos or animations in this session</p>
+                                        )}
+                                    </div>
                                 </CardContent>
                             </Card>
                         )}

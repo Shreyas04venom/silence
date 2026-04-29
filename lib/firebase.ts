@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app"
 import { getFirestore } from "firebase/firestore"
 import { getStorage } from "firebase/storage"
-import { getAuth, GoogleAuthProvider } from "firebase/auth"
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth"
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -26,6 +26,12 @@ if (firebaseConfig.apiKey) {
     firestore = getFirestore(app)
     storage = getStorage(app)
     auth = getAuth(app)
+    
+    // Set auth persistence to LOCAL (survives browser restarts)
+    setPersistence(auth, browserLocalPersistence).catch((error) => {
+      console.error("Failed to set auth persistence:", error)
+    })
+    
     googleProvider = new GoogleAuthProvider()
   } catch (error) {
     console.error("Firebase initialization failed:", error)

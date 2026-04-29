@@ -144,6 +144,7 @@ export function VICTeacherDashboard({ onClose }: TeacherDashboardProps) {
             translations: {},
             images: imageUrl ? [imageUrl] : [],
             animations: animationCode ? [animationCode] : [],
+            videos: youtubeVideo ? [youtubeVideo.videoId] : [], // Save YouTube video ID
             // Save all generated content
             explanation: explanation || undefined,
             imageUrl: imageUrl || undefined,
@@ -153,7 +154,13 @@ export function VICTeacherDashboard({ onClose }: TeacherDashboardProps) {
             signLanguageSVG: signLanguageSVG || undefined,
             accessibility: {
                 visualTranscript: visualTranscript || "",
-                signLanguageData: [],
+                signLanguageData: youtubeVideo ? [{
+                    videoId: youtubeVideo.videoId,
+                    title: youtubeVideo.title,
+                    channelTitle: youtubeVideo.channelTitle,
+                    startSeconds: youtubeVideo.startSeconds,
+                    endSeconds: youtubeVideo.endSeconds
+                }] : [],
             },
             metadata: {
                 teacher: "Demo Teacher",

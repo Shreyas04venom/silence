@@ -12,6 +12,7 @@ export interface VICSession {
     translations: Record<string, string>
     images: string[]
     animations: string[]
+    videos?: string[] // YouTube video IDs or URLs
     // Generated content fields
     explanation?: string
     imageUrl?: string
