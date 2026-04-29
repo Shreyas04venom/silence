@@ -1,6 +1,23 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || ""
+// Support multiple YouTube API keys with automatic fallback
+const YOUTUBE_API_KEYS = (process.env.YOUTUBE_API_KEY || "")
+  .split(",")
+  .map((k) => k.trim())
+  .filter(Boolean)
+
+let currentYouTubeKeyIndex = 0
+
+function getYouTubeApiKey(): string {
+  if (YOUTUBE_API_KEYS.length === 0) return ""
+  return YOUTUBE_API_KEYS[currentYouTubeKeyIndex % YOUTUBE_API_KEYS.length]
+}
+
+function rotateYouTubeApiKey(): void {
+  currentYouTubeKeyIndex = (currentYouTubeKeyIndex + 1) % YOUTUBE_API_KEYS.length
+  console.log(`[YouTube] Rotated to API key ${currentYouTubeKeyIndex + 1}/${YOUTUBE_API_KEYS.length}`)
+}
+
 const GEMINI_KEYS = (process.env.GEMINI_API_KEY || "")
   .split(",")
   .map((k) => k.trim())
@@ -143,7 +160,7 @@ async function searchInChannel(
     videoSyndicated: "true",
     maxResults: String(maxResults),
     order: "relevance",
-    key: YOUTUBE_API_KEY,
+    key: getYouTubeApiKey(),
   })
 
   try {
@@ -151,26 +168,49 @@ async function searchInChannel(
       `https://www.googleapis.com/youtube/v3/search?${params.toString()}`,
       { next: { revalidate: 3600 } }
     )
+    
+    // If quota exceeded, try next key
+    if (response.status === 403 || response.status === 429) {
+      console.warn(`[YouTube] API key quota exceeded, rotating to next key`)
+      rotateYouTubeApiKey()
+      
+      // Retry with new key
+      params.set('key', getYouTubeApiKey())
+      const retryResponse = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?${params.toString()}`,
+        { next: { revalidate: 3600 } }
+      )
+      
+      if (!retryResponse.ok) return []
+      const retryData = await retryResponse.json()
+      return parseYouTubeResults(retryData, channelId, channelInfo)
+    }
+    
     if (!response.ok) return []
 
     const data = await response.json()
-    return (data.items || [])
-      .filter((item: any) => item.id?.videoId && item.snippet)
-      .map((item: any) => ({
-        videoId: item.id.videoId,
-        title: item.snippet.title || "",
-        channelTitle: item.snippet.channelTitle || "",
-        channelId: item.snippet.channelId || channelId,
-        description: (item.snippet.description || "").slice(0, 300),
-        thumbnailUrl:
-          item.snippet.thumbnails?.medium?.url ||
-          `https://i.ytimg.com/vi/${item.id.videoId}/mqdefault.jpg`,
-        isFromAnimationChannel: true,
-        channelTier: channelInfo?.tier ?? 3,
-      })) as YouTubeVideoResult[]
-  } catch {
+    return parseYouTubeResults(data, channelId, channelInfo)
+  } catch (error) {
+    console.error('[YouTube] Search error:', error)
     return []
   }
+}
+
+function parseYouTubeResults(data: any, channelId: string, channelInfo: any): YouTubeVideoResult[] {
+  return (data.items || [])
+    .filter((item: any) => item.id?.videoId && item.snippet)
+    .map((item: any) => ({
+      videoId: item.id.videoId,
+      title: item.snippet.title || "",
+      channelTitle: item.snippet.channelTitle || "",
+      channelId: item.snippet.channelId || channelId,
+      description: (item.snippet.description || "").slice(0, 300),
+      thumbnailUrl:
+        item.snippet.thumbnails?.medium?.url ||
+        `https://i.ytimg.com/vi/${item.id.videoId}/mqdefault.jpg`,
+      isFromAnimationChannel: true,
+      channelTier: channelInfo?.tier ?? 3,
+    })) as YouTubeVideoResult[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -227,7 +267,7 @@ async function searchYouTubeGeneral(keyword: string): Promise<YouTubeVideoResult
     order: "relevance",
     relevanceLanguage: "en",
     safeSearch: "strict",
-    key: YOUTUBE_API_KEY,
+    key: getYouTubeApiKey(),
   })
 
   try {
@@ -235,30 +275,53 @@ async function searchYouTubeGeneral(keyword: string): Promise<YouTubeVideoResult
       `https://www.googleapis.com/youtube/v3/search?${params.toString()}`,
       { next: { revalidate: 3600 } }
     )
+    
+    // If quota exceeded, try next key
+    if (response.status === 403 || response.status === 429) {
+      console.warn(`[YouTube] General search API key quota exceeded, rotating to next key`)
+      rotateYouTubeApiKey()
+      
+      // Retry with new key
+      params.set('key', getYouTubeApiKey())
+      const retryResponse = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?${params.toString()}`,
+        { next: { revalidate: 3600 } }
+      )
+      
+      if (!retryResponse.ok) return []
+      const retryData = await retryResponse.json()
+      return parseGeneralSearchResults(retryData)
+    }
+    
     if (!response.ok) return []
 
     const data = await response.json()
-    return (data.items || [])
-      .filter((item: any) => item.id?.videoId && item.snippet)
-      .map((item: any) => {
-        const cid = item.snippet.channelId || ""
-        const channelInfo = PURE_ANIMATION_CHANNELS.find((c) => c.id === cid)
-        return {
-          videoId: item.id.videoId,
-          title: item.snippet.title || "",
-          channelTitle: item.snippet.channelTitle || "",
-          channelId: cid,
-          description: (item.snippet.description || "").slice(0, 300),
-          thumbnailUrl:
-            item.snippet.thumbnails?.medium?.url ||
-            `https://i.ytimg.com/vi/${item.id.videoId}/mqdefault.jpg`,
-          isFromAnimationChannel: ANIMATION_CHANNEL_IDS.has(cid),
-          channelTier: channelInfo?.tier ?? 99,
-        }
-      }) as YouTubeVideoResult[]
-  } catch {
+    return parseGeneralSearchResults(data)
+  } catch (error) {
+    console.error('[YouTube] General search error:', error)
     return []
   }
+}
+
+function parseGeneralSearchResults(data: any): YouTubeVideoResult[] {
+  return (data.items || [])
+    .filter((item: any) => item.id?.videoId && item.snippet)
+    .map((item: any) => {
+      const cid = item.snippet.channelId || ""
+      const channelInfo = PURE_ANIMATION_CHANNELS.find((c) => c.id === cid)
+      return {
+        videoId: item.id.videoId,
+        title: item.snippet.title || "",
+        channelTitle: item.snippet.channelTitle || "",
+        channelId: cid,
+        description: (item.snippet.description || "").slice(0, 300),
+        thumbnailUrl:
+          item.snippet.thumbnails?.medium?.url ||
+          `https://i.ytimg.com/vi/${item.id.videoId}/mqdefault.jpg`,
+        isFromAnimationChannel: ANIMATION_CHANNEL_IDS.has(cid),
+        channelTier: channelInfo?.tier ?? 99,
+      }
+    }) as YouTubeVideoResult[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -324,32 +387,55 @@ async function fetchVideoDetails(videoId: string): Promise<{
   const params = new URLSearchParams({
     part: "snippet,contentDetails",
     id: videoId,
-    key: YOUTUBE_API_KEY,
+    key: getYouTubeApiKey(),
   })
   try {
     const res = await fetch(
       `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`,
       { next: { revalidate: 3600 } }
     )
+    
+    // If quota exceeded, try next key
+    if (res.status === 403 || res.status === 429) {
+      console.warn(`[YouTube] Video details API key quota exceeded, rotating to next key`)
+      rotateYouTubeApiKey()
+      
+      // Retry with new key
+      params.set('key', getYouTubeApiKey())
+      const retryRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`,
+        { next: { revalidate: 3600 } }
+      )
+      
+      if (!retryRes.ok) return { description: "", durationSeconds: 0 }
+      const retryData = await retryRes.json()
+      return parseVideoDetails(retryData)
+    }
+    
     if (!res.ok) return { description: "", durationSeconds: 0 }
     const data = await res.json()
-    const item = data.items?.[0]
-    if (!item) return { description: "", durationSeconds: 0 }
-
-    // Parse ISO 8601 duration (e.g. PT4M30S)
-    const dur = item.contentDetails?.duration || ""
-    const dMatch = dur.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
-    const durationSeconds =
-      (parseInt(dMatch?.[1] || "0") * 3600) +
-      (parseInt(dMatch?.[2] || "0") * 60) +
-      parseInt(dMatch?.[3] || "0")
-
-    return {
-      description: item.snippet?.description || "",
-      durationSeconds,
-    }
-  } catch {
+    return parseVideoDetails(data)
+  } catch (error) {
+    console.error('[YouTube] Fetch video details error:', error)
     return { description: "", durationSeconds: 0 }
+  }
+}
+
+function parseVideoDetails(data: any): { description: string; durationSeconds: number } {
+  const item = data.items?.[0]
+  if (!item) return { description: "", durationSeconds: 0 }
+
+  // Parse ISO 8601 duration (e.g. PT4M30S)
+  const dur = item.contentDetails?.duration || ""
+  const dMatch = dur.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+  const durationSeconds =
+    (parseInt(dMatch?.[1] || "0") * 3600) +
+    (parseInt(dMatch?.[2] || "0") * 60) +
+    parseInt(dMatch?.[3] || "0")
+
+  return {
+    description: item.snippet?.description || "",
+    durationSeconds,
   }
 }
 
@@ -484,12 +570,12 @@ export async function findBestYouTubeVideo(
   chapter?: string,
   standard?: string,
 ): Promise<SmartVideoMatch | null> {
-  if (!YOUTUBE_API_KEY) {
-    console.warn("[YouTube] No YOUTUBE_API_KEY")
+  if (YOUTUBE_API_KEYS.length === 0) {
+    console.warn("[YouTube] No YOUTUBE_API_KEY configured")
     return null
   }
 
-  console.log(`[YouTube] Finding ANIMATED video for: "${topic}"`)
+  console.log(`[YouTube] Finding ANIMATED video for: "${topic}" (${YOUTUBE_API_KEYS.length} API keys available)`)
 
   // Step 1: Extract clean keyword from teacher's speech
   const keyword = await getSearchKeyword(topic, subject)
@@ -506,7 +592,7 @@ export async function findBestYouTubeVideo(
   }
 
   if (results.length === 0) {
-    console.warn("[YouTube] No results found at all")
+    console.warn("[YouTube] No results found at all for keyword:", keyword)
     return null
   }
 
