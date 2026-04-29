@@ -100,10 +100,10 @@ export async function GET(request: NextRequest) {
       svg = await generateSVGWithGemini(topic)
     }
 
-    // 3. If Gemini also failed, use the generic fallback
+    // 3. If Gemini also failed, use a SMART generic fallback that's still topic-specific
     if (!svg) {
-      console.log(`[Image Generation] Gemini failed — using generic fallback for "${topic}"`)
-      svg = generateGenericAdvancedDiagram(topic, prompt)
+      console.log(`[Image Generation] Gemini failed — using smart topic-specific fallback for "${topic}"`)
+      svg = generateSmartTopicDiagram(topic, prompt)
     }
 
     return new NextResponse(svg, {
@@ -849,6 +849,298 @@ function generateRespiratorySystemDiagram(): string {
 }
 
 function generateGenericAdvancedDiagram(topic: string, prompt: string): string {
+  return generateSmartTopicDiagram(topic, prompt)
+}
+
+// Smart topic-specific diagram generator - creates educational diagrams based on topic keywords
+function generateSmartTopicDiagram(topic: string, prompt: string): string {
+  const topicLower = topic.toLowerCase()
+  
+  // Detect topic category and generate appropriate diagram
+  if (topicLower.includes('math') || topicLower.includes('equation') || topicLower.includes('algebra') || 
+      topicLower.includes('geometry') || topicLower.includes('fraction') || topicLower.includes('number')) {
+    return generateMathDiagram(topic)
+  } else if (topicLower.includes('history') || topicLower.includes('war') || topicLower.includes('revolution') ||
+             topicLower.includes('ancient') || topicLower.includes('civilization')) {
+    return generateHistoryDiagram(topic)
+  } else if (topicLower.includes('geography') || topicLower.includes('continent') || topicLower.includes('ocean') ||
+             topicLower.includes('mountain') || topicLower.includes('climate')) {
+    return generateGeographyDiagram(topic)
+  } else if (topicLower.includes('language') || topicLower.includes('grammar') || topicLower.includes('sentence') ||
+             topicLower.includes('verb') || topicLower.includes('noun')) {
+    return generateLanguageDiagram(topic)
+  } else {
+    // Science/General educational diagram
+    return generateScienceDiagram(topic)
+  }
+}
+
+function generateMathDiagram(topic: string): string {
+  return `
+    <svg width="1000" height="800" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800">
+      <defs>
+        <linearGradient id="mathGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#dbeafe;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#bfdbfe;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+
+      <rect width="1000" height="800" fill="url(#mathGrad)"/>
+
+      <!-- Title -->
+      <rect x="0" y="0" width="1000" height="100" fill="#1e40af"/>
+      <text x="500" y="50" font-size="44" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial, sans-serif">
+        ${topic.toUpperCase()}
+      </text>
+      <text x="500" y="80" font-size="14" text-anchor="middle" fill="#bfdbfe" font-family="Arial, sans-serif">
+        MATHEMATICS • VISUAL LEARNING FOR DEAF STUDENTS
+      </text>
+
+      <!-- Central concept -->
+      <rect x="300" y="200" width="400" height="150" fill="#60a5fa" stroke="#1e40af" stroke-width="3" rx="15"/>
+      <text x="500" y="260" font-size="32" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial, sans-serif">
+        ${topic}
+      </text>
+      <text x="500" y="310" font-size="48" text-anchor="middle">🔢</text>
+
+      <!-- Key concepts -->
+      <rect x="100" y="450" width="250" height="120" fill="#93c5fd" stroke="#2563eb" stroke-width="2" rx="10"/>
+      <text x="225" y="490" font-size="16" font-weight="bold" text-anchor="middle" fill="#1e3a8a">FORMULA</text>
+      <text x="225" y="520" font-size="14" text-anchor="middle" fill="#1e40af">Mathematical Rule</text>
+      <text x="225" y="550" font-size="32" text-anchor="middle">📐</text>
+
+      <rect x="375" y="450" width="250" height="120" fill="#93c5fd" stroke="#2563eb" stroke-width="2" rx="10"/>
+      <text x="500" y="490" font-size="16" font-weight="bold" text-anchor="middle" fill="#1e3a8a">STEPS</text>
+      <text x="500" y="520" font-size="14" text-anchor="middle" fill="#1e40af">How to Solve</text>
+      <text x="500" y="550" font-size="32" text-anchor="middle">📝</text>
+
+      <rect x="650" y="450" width="250" height="120" fill="#93c5fd" stroke="#2563eb" stroke-width="2" rx="10"/>
+      <text x="775" y="490" font-size="16" font-weight="bold" text-anchor="middle" fill="#1e3a8a">EXAMPLE</text>
+      <text x="775" y="520" font-size="14" text-anchor="middle" fill="#1e40af">Practice Problem</text>
+      <text x="775" y="550" font-size="32" text-anchor="middle">✏️</text>
+
+      <!-- Connecting arrows -->
+      <path d="M 500 350 L 225 450" stroke="#2563eb" stroke-width="3" fill="none" marker-end="url(#arrowMath)"/>
+      <path d="M 500 350 L 500 450" stroke="#2563eb" stroke-width="3" fill="none" marker-end="url(#arrowMath)"/>
+      <path d="M 500 350 L 775 450" stroke="#2563eb" stroke-width="3" fill="none" marker-end="url(#arrowMath)"/>
+
+      <!-- Info box -->
+      <rect x="50" y="650" width="900" height="120" fill="white" stroke="#2563eb" stroke-width="2" rx="10"/>
+      <text x="500" y="685" font-size="16" font-weight="bold" text-anchor="middle" fill="#1e40af">
+        ✋ VISUAL MATH LEARNING ✋
+      </text>
+      <text x="500" y="710" font-size="13" text-anchor="middle" fill="#1e40af">
+        • See the concept visually • Follow step-by-step • Practice with examples
+      </text>
+      <text x="500" y="735" font-size="13" text-anchor="middle" fill="#1e40af">
+        • Use hand gestures for numbers • Draw diagrams • Solve together
+      </text>
+
+      <defs>
+        <marker id="arrowMath" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 Z" fill="#2563eb"/>
+        </marker>
+      </defs>
+    </svg>
+  `
+}
+
+function generateHistoryDiagram(topic: string): string {
+  return `
+    <svg width="1000" height="800" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800">
+      <defs>
+        <linearGradient id="histGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#fef3c7;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#fde68a;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+
+      <rect width="1000" height="800" fill="url(#histGrad)"/>
+
+      <!-- Title -->
+      <rect x="0" y="0" width="1000" height="100" fill="#92400e"/>
+      <text x="500" y="50" font-size="44" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial, sans-serif">
+        ${topic.toUpperCase()}
+      </text>
+      <text x="500" y="80" font-size="14" text-anchor="middle" fill="#fde68a" font-family="Arial, sans-serif">
+        HISTORY • VISUAL TIMELINE FOR DEAF STUDENTS
+      </text>
+
+      <!-- Timeline -->
+      <line x1="100" y1="400" x2="900" y2="400" stroke="#92400e" stroke-width="4"/>
+      
+      <!-- Event 1 -->
+      <circle cx="200" cy="400" r="40" fill="#fbbf24" stroke="#92400e" stroke-width="3"/>
+      <text x="200" y="410" font-size="24" text-anchor="middle">📅</text>
+      <text x="200" y="320" font-size="14" font-weight="bold" text-anchor="middle" fill="#78350f">BEGINNING</text>
+      <text x="200" y="340" font-size="12" text-anchor="middle" fill="#92400e">Start of Event</text>
+
+      <!-- Event 2 -->
+      <circle cx="500" cy="400" r="50" fill="#f59e0b" stroke="#92400e" stroke-width="3"/>
+      <text x="500" y="415" font-size="28" text-anchor="middle">⭐</text>
+      <text x="500" y="300" font-size="16" font-weight="bold" text-anchor="middle" fill="#78350f">${topic}</text>
+      <text x="500" y="320" font-size="12" text-anchor="middle" fill="#92400e">Main Event</text>
+
+      <!-- Event 3 -->
+      <circle cx="800" cy="400" r="40" fill="#fbbf24" stroke="#92400e" stroke-width="3"/>
+      <text x="800" y="410" font-size="24" text-anchor="middle">🏁</text>
+      <text x="800" y="320" font-size="14" font-weight="bold" text-anchor="middle" fill="#78350f">OUTCOME</text>
+      <text x="800" y="340" font-size="12" text-anchor="middle" fill="#92400e">Result/Impact</text>
+
+      <!-- Details boxes -->
+      <rect x="100" y="550" width="250" height="180" fill="white" stroke="#92400e" stroke-width="2" rx="10"/>
+      <text x="225" y="580" font-size="16" font-weight="bold" text-anchor="middle" fill="#78350f">WHO</text>
+      <text x="225" y="610" font-size="13" text-anchor="middle" fill="#92400e">Key People</text>
+      <text x="225" y="630" font-size="13" text-anchor="middle" fill="#92400e">& Leaders</text>
+      <text x="225" y="680" font-size="40" text-anchor="middle">👥</text>
+
+      <rect x="375" y="550" width="250" height="180" fill="white" stroke="#92400e" stroke-width="2" rx="10"/>
+      <text x="500" y="580" font-size="16" font-weight="bold" text-anchor="middle" fill="#78350f">WHAT</text>
+      <text x="500" y="610" font-size="13" text-anchor="middle" fill="#92400e">What Happened</text>
+      <text x="500" y="630" font-size="13" text-anchor="middle" fill="#92400e">& Why</text>
+      <text x="500" y="680" font-size="40" text-anchor="middle">📜</text>
+
+      <rect x="650" y="550" width="250" height="180" fill="white" stroke="#92400e" stroke-width="2" rx="10"/>
+      <text x="775" y="580" font-size="16" font-weight="bold" text-anchor="middle" fill="#78350f">IMPACT</text>
+      <text x="775" y="610" font-size="13" text-anchor="middle" fill="#92400e">How It Changed</text>
+      <text x="775" y="630" font-size="13" text-anchor="middle" fill="#92400e">The World</text>
+      <text x="775" y="680" font-size="40" text-anchor="middle">🌍</text>
+    </svg>
+  `
+}
+
+function generateGeographyDiagram(topic: string): string {
+  return `
+    <svg width="1000" height="800" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800">
+      <defs>
+        <linearGradient id="geoGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#dbeafe;stop-opacity:1" />
+          <stop offset="50%" style="stop-color:#a7f3d0;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#6ee7b7;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+
+      <rect width="1000" height="800" fill="url(#geoGrad)"/>
+
+      <!-- Title -->
+      <rect x="0" y="0" width="1000" height="100" fill="#065f46"/>
+      <text x="500" y="50" font-size="44" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial, sans-serif">
+        ${topic.toUpperCase()}
+      </text>
+      <text x="500" y="80" font-size="14" text-anchor="middle" fill="#a7f3d0" font-family="Arial, sans-serif">
+        GEOGRAPHY • VISUAL WORLD LEARNING FOR DEAF STUDENTS
+      </text>
+
+      <!-- Globe/Map representation -->
+      <circle cx="500" cy="400" r="200" fill="#10b981" stroke="#065f46" stroke-width="4"/>
+      <ellipse cx="500" cy="400" rx="200" ry="80" fill="none" stroke="#065f46" stroke-width="2" opacity="0.5"/>
+      <ellipse cx="500" cy="400" rx="80" ry="200" fill="none" stroke="#065f46" stroke-width="2" opacity="0.5"/>
+      <text x="500" y="420" font-size="80" text-anchor="middle">🌍</text>
+
+      <!-- Key features -->
+      <rect x="100" y="150" width="200" height="100" fill="#34d399" stroke="#065f46" stroke-width="2" rx="10"/>
+      <text x="200" y="185" font-size="14" font-weight="bold" text-anchor="middle" fill="#064e3b">LOCATION</text>
+      <text x="200" y="210" font-size="12" text-anchor="middle" fill="#065f46">Where is it?</text>
+      <text x="200" y="235" font-size="24" text-anchor="middle">📍</text>
+
+      <rect x="700" y="150" width="200" height="100" fill="#34d399" stroke="#065f46" stroke-width="2" rx="10"/>
+      <text x="800" y="185" font-size="14" font-weight="bold" text-anchor="middle" fill="#064e3b">FEATURES</text>
+      <text x="800" y="210" font-size="12" text-anchor="middle" fill="#065f46">What's there?</text>
+      <text x="800" y="235" font-size="24" text-anchor="middle">🏔️</text>
+
+      <rect x="100" y="550" width="200" height="100" fill="#34d399" stroke="#065f46" stroke-width="2" rx="10"/>
+      <text x="200" y="585" font-size="14" font-weight="bold" text-anchor="middle" fill="#064e3b">CLIMATE</text>
+      <text x="200" y="610" font-size="12" text-anchor="middle" fill="#065f46">Weather patterns</text>
+      <text x="200" y="635" font-size="24" text-anchor="middle">☀️</text>
+
+      <rect x="700" y="550" width="200" height="100" fill="#34d399" stroke="#065f46" stroke-width="2" rx="10"/>
+      <text x="800" y="585" font-size="14" font-weight="bold" text-anchor="middle" fill="#064e3b">PEOPLE</text>
+      <text x="800" y="610" font-size="12" text-anchor="middle" fill="#065f46">Who lives there?</text>
+      <text x="800" y="635" font-size="24" text-anchor="middle">👨‍👩‍👧‍👦</text>
+
+      <!-- Info box -->
+      <rect x="50" y="700" width="900" height="80" fill="white" stroke="#065f46" stroke-width="2" rx="10"/>
+      <text x="500" y="730" font-size="14" font-weight="bold" text-anchor="middle" fill="#065f46">
+        ✋ VISUAL GEOGRAPHY ✋ • Learn about places through maps and images
+      </text>
+      <text x="500" y="755" font-size="12" text-anchor="middle" fill="#065f46">
+        Use hand gestures to show directions • Point to locations • Draw maps together
+      </text>
+    </svg>
+  `
+}
+
+function generateLanguageDiagram(topic: string): string {
+  return `
+    <svg width="1000" height="800" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800">
+      <defs>
+        <linearGradient id="langGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#fce7f3;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#fbcfe8;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+
+      <rect width="1000" height="800" fill="url(#langGrad)"/>
+
+      <!-- Title -->
+      <rect x="0" y="0" width="1000" height="100" fill="#9f1239"/>
+      <text x="500" y="50" font-size="44" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial, sans-serif">
+        ${topic.toUpperCase()}
+      </text>
+      <text x="500" y="80" font-size="14" text-anchor="middle" fill="#fbcfe8" font-family="Arial, sans-serif">
+        LANGUAGE ARTS • VISUAL LEARNING FOR DEAF STUDENTS
+      </text>
+
+      <!-- Central concept -->
+      <rect x="300" y="200" width="400" height="150" fill="#f472b6" stroke="#9f1239" stroke-width="3" rx="15"/>
+      <text x="500" y="260" font-size="32" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial, sans-serif">
+        ${topic}
+      </text>
+      <text x="500" y="310" font-size="48" text-anchor="middle">📚</text>
+
+      <!-- Language components -->
+      <rect x="100" y="450" width="250" height="120" fill="#f9a8d4" stroke="#be123c" stroke-width="2" rx="10"/>
+      <text x="225" y="490" font-size="16" font-weight="bold" text-anchor="middle" fill="#831843">DEFINITION</text>
+      <text x="225" y="520" font-size="14" text-anchor="middle" fill="#9f1239">What it means</text>
+      <text x="225" y="550" font-size="32" text-anchor="middle">📖</text>
+
+      <rect x="375" y="450" width="250" height="120" fill="#f9a8d4" stroke="#be123c" stroke-width="2" rx="10"/>
+      <text x="500" y="490" font-size="16" font-weight="bold" text-anchor="middle" fill="#831843">EXAMPLES</text>
+      <text x="500" y="520" font-size="14" text-anchor="middle" fill="#9f1239">How to use it</text>
+      <text x="500" y="550" font-size="32" text-anchor="middle">✍️</text>
+
+      <rect x="650" y="450" width="250" height="120" fill="#f9a8d4" stroke="#be123c" stroke-width="2" rx="10"/>
+      <text x="775" y="490" font-size="16" font-weight="bold" text-anchor="middle" fill="#831843">PRACTICE</text>
+      <text x="775" y="520" font-size="14" text-anchor="middle" fill="#9f1239">Try it yourself</text>
+      <text x="775" y="550" font-size="32" text-anchor="middle">✏️</text>
+
+      <!-- Connecting arrows -->
+      <path d="M 500 350 L 225 450" stroke="#be123c" stroke-width="3" fill="none" marker-end="url(#arrowLang)"/>
+      <path d="M 500 350 L 500 450" stroke="#be123c" stroke-width="3" fill="none" marker-end="url(#arrowLang)"/>
+      <path d="M 500 350 L 775 450" stroke="#be123c" stroke-width="3" fill="none" marker-end="url(#arrowLang)"/>
+
+      <!-- Info box -->
+      <rect x="50" y="650" width="900" height="120" fill="white" stroke="#be123c" stroke-width="2" rx="10"/>
+      <text x="500" y="685" font-size="16" font-weight="bold" text-anchor="middle" fill="#9f1239">
+        ✋ VISUAL LANGUAGE LEARNING ✋
+      </text>
+      <text x="500" y="710" font-size="13" text-anchor="middle" fill="#9f1239">
+        • See words in context • Learn through examples • Practice with visuals
+      </text>
+      <text x="500" y="735" font-size="13" text-anchor="middle" fill="#9f1239">
+        • Use sign language for words • Write together • Read with pictures
+      </text>
+
+      <defs>
+        <marker id="arrowLang" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 Z" fill="#be123c"/>
+        </marker>
+      </defs>
+    </svg>
+  `
+}
+
+function generateScienceDiagram(topic: string): string {
   return `
     <svg width="1000" height="800" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800">
       <defs>

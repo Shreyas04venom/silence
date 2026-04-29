@@ -112,42 +112,11 @@ export async function POST(request: NextRequest) {
     let imageUrl = matchedAssets.imageUrl;
     let usedSearchEngine = false;
 
+    // ALWAYS use AI-generated SVG diagrams (same as localhost behavior)
+    // This ensures consistent high-quality educational diagrams in both localhost and Vercel
     if (!imageUrl) {
-      try {
-        console.log("[Generate Content] Fetching animated diagram from DuckDuckGo Image Search...");
-        const searchQuery = `${topic} animated labeled diagram visually explained educational deaf students`;
-        const q = encodeURIComponent(searchQuery);
-        
-        // 1. Fetch DuckDuckGo HTML to extract the VQD token
-        const htmlRes = await fetch(`https://duckduckgo.com/?q=${q}&t=h_&iar=images&iax=images&ia=images`);
-        const htmlText = await htmlRes.text();
-        const vqdMatch = htmlText.match(/vqd=([\d-]+)/);
-        
-        if (vqdMatch && vqdMatch[1]) {
-          // 2. Fetch the actual JSON image payload using the token
-          const vqd = vqdMatch[1];
-          const imgRes = await fetch(`https://duckduckgo.com/i.js?l=us-en&o=json&q=${q}&vqd=${vqd}&f=,,,&p=1`);
-          const imgData = await imgRes.json();
-          
-          if (imgData.results && imgData.results.length > 0) {
-            imageUrl = imgData.results[0].image;
-            usedSearchEngine = true;
-            console.log("[Generate Content] Dynamic image found using DuckDuckGo Search:", imageUrl);
-          } else {
-            console.log("[Generate Content] No images found in DuckDuckGo results.");
-          }
-        } else {
-          console.warn("[Generate Content] Could not extract DuckDuckGo token.");
-        }
-      } catch (err) {
-        console.error("[Generate Content] Error fetching DuckDuckGo image:", err);
-      }
-      
-      // Fallback to AI generation if DuckDuckGo search fails
-      if (!imageUrl) {
-         console.log("[Generate Content] Falling back to AI image generator");
-         imageUrl = `/api/generate-image?prompt=${encodeURIComponent(generatedContent.imagePrompt)}&topic=${encodeURIComponent(topic)}`;
-      }
+      console.log("[Generate Content] Using AI image generator for educational diagram");
+      imageUrl = `/api/generate-image?prompt=${encodeURIComponent(generatedContent.imagePrompt)}&topic=${encodeURIComponent(topic)}`;
     }
 
     console.log("[Generate Content] Image URL:", imageUrl, matchedAssets.imageUrl ? "(pre-generated)" : "(dynamic)")
