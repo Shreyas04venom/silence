@@ -66,6 +66,41 @@ export function getAllSessions(): VICSession[] {
     }
 }
 
+/**
+ * Merge cloud sessions with local sessions
+ * Called on app start to sync sessions from Supabase
+ */
+export function mergeSessions(cloudSessions: VICSession[]): void {
+    try {
+        const localSessions = getAllSessions()
+        
+        // Create a map of existing session IDs
+        const sessionMap = new Map<string, VICSession>()
+        
+        // Add local sessions first (they're more recent)
+        localSessions.forEach(session => {
+            sessionMap.set(session.id, session)
+        })
+        
+        // Add cloud sessions (won't overwrite local ones)
+        cloudSessions.forEach(session => {
+            if (!sessionMap.has(session.id)) {
+                sessionMap.set(session.id, session)
+            }
+        })
+        
+        // Convert back to array and sort by timestamp (newest first)
+        const mergedSessions = Array.from(sessionMap.values())
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, MAX_SESSIONS) // Keep only MAX_SESSIONS
+        
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedSessions))
+        console.info(`✓ Merged sessions: ${localSessions.length} local + ${cloudSessions.length} cloud = ${mergedSessions.length} total`)
+    } catch (error) {
+        console.error("Failed to merge sessions:", error)
+    }
+}
+
 export function getSession(id: string): VICSession | null {
     const sessions = getAllSessions()
     return sessions.find(s => s.id === id) || null

@@ -25,7 +25,23 @@ export function VICStudentDashboard({ onClose, isTeacher = false }: StudentDashb
 
     useEffect(() => {
         loadSessions()
+        loadSessionsFromCloud()
     }, [])
+
+    const loadSessionsFromCloud = async () => {
+        try {
+            const { loadSessionsFromSupabase } = await import('@/lib/supabase-services')
+            const { mergeSessions } = await import('@/lib/session-storage')
+            
+            const cloudSessions = await loadSessionsFromSupabase()
+            if (cloudSessions.length > 0) {
+                mergeSessions(cloudSessions)
+                loadSessions() // Reload to show merged sessions
+            }
+        } catch (error) {
+            console.error('Failed to load cloud sessions:', error)
+        }
+    }
 
     const loadSessions = () => {
         const allSessions = getAllSessions()

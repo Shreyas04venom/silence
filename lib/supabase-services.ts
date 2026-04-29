@@ -359,3 +359,75 @@ export async function flushQueue(): Promise<void> {
 export function getPendingQueueCount(): number {
   return getQueue().length
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Load sessions from Supabase to localStorage
+// Called on app start to restore sessions from database
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function loadSessionsFromSupabase(): Promise<VICSession[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.info("[Supabase] Not configured — using local sessions only")
+    return []
+  }
+
+  try {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
+
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/Lessons?select=*,Media(*)&order=created_at.desc&limit=50`, {
+      method: "GET",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+      },
+      signal: ctrl.signal,
+    })
+
+    clearTimeout(timer)
+
+    if (!res.ok) {
+      console.warn("[Supabase] Failed to load sessions:", res.status)
+      return []
+    }
+
+    const lessons = await res.json()
+    
+    // Convert Supabase lessons to VICSession format
+    const sessions: VICSession[] = lessons.map((lesson: any) => {
+      const media = lesson.Media || []
+      const imageUrl = media.find((m: any) => m.type === 'image_url')?.url
+      const animationUrl = media.find((m: any) => m.type === 'animation_url')?.url
+      
+      return {
+        id: lesson.id,
+        title: lesson.topic || 'Lesson',
+        timestamp: new Date(lesson.created_at).getTime(),
+        duration: 0,
+        transcript: lesson.transcript || lesson.explanation || '',
+        translations: {},
+        images: imageUrl ? [imageUrl] : [],
+        animations: [],
+        videos: [],
+        explanation: lesson.explanation,
+        imageUrl: imageUrl,
+        animationUrl: animationUrl,
+        accessibility: {
+          visualTranscript: '',
+          signLanguageData: []
+        },
+        metadata: {
+          subject: lesson.subject,
+          standard: lesson.standard,
+          topic: lesson.topic,
+        }
+      }
+    })
+
+    console.info(`[Supabase] ✓ Loaded ${sessions.length} sessions from cloud`)
+    return sessions
+  } catch (error) {
+    console.warn("[Supabase] Error loading sessions:", error)
+    return []
+  }
+}
