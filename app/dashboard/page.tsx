@@ -24,32 +24,59 @@ function TeacherDashboardContent() {
       return
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        router.push("/auth/login")
-        return
-      }
-
-      try {
-        const profileDoc = await getDoc(doc(firestore, "profiles", user.uid))
-        const profile = profileDoc.data()
-
-        if (!profile || profile.role !== "teacher") {
-          router.push("/auth/student-login")
+    // Add a small delay to ensure Firebase Auth is fully initialized
+    const checkAuth = async () => {
+      // Wait a bit for auth to initialize
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        console.log("[Dashboard] Auth state changed:", user ? user.email : "No user")
+        
+        if (!user) {
+          console.log("[Dashboard] No user, redirecting to login...")
+          router.push("/auth/login")
           return
         }
 
-        setUserName(profile.name || user.displayName || "Teacher")
-      } catch (err) {
-        console.error("Error fetching profile:", err)
-        router.push("/auth/login")
-        return
-      }
+        try {
+          console.log("[Dashboard] Checking user profile...")
+          const profileDoc = await getDoc(doc(firestore, "profiles", user.uid))
+          
+          if (!profileDoc.exists()) {
+            console.warn("[Dashboard] Profile not found, redirecting to login...")
+            await auth.signOut()
+            router.push("/auth/login")
+            return
+          }
+          
+          const profile = profileDoc.data()
+          console.log("[Dashboard] Profile found, role:", profile?.role)
 
-      setLoading(false)
-    })
+          if (profile.role !== "teacher") {
+            console.warn("[Dashboard] Not a teacher, redirecting...")
+            await auth.signOut()
+            router.push("/auth/student-login")
+            return
+          }
 
-    return () => unsubscribe()
+          console.log("[Dashboard] ✓ Teacher authenticated:", user.email)
+          setUserName(profile.name || user.displayName || "Teacher")
+          setLoading(false)
+        } catch (err) {
+          console.error("[Dashboard] Error fetching profile:", err)
+          router.push("/auth/login")
+          return
+        }
+      })
+
+      return unsubscribe
+    }
+
+    const unsubscribePromise = checkAuth()
+    
+    return () => {
+      unsubscribePromise.then(unsub => unsub?.())
+    }
   }, [router, searchParams])
 
   if (loading) {

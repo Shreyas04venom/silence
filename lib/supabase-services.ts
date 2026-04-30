@@ -378,14 +378,12 @@ export async function loadSessionsFromSupabase(userId?: string, userRole?: 'teac
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
 
-    // For students: load public teacher sessions + their own sessions
-    // For teachers: load only their own sessions
-    let query = `${SUPABASE_URL}/rest/v1/Lessons?select=*,Media(*)&order=created_at.desc&limit=50`
+    // For students: load ALL sessions (old data doesn't have is_public column)
+    // For teachers: load ALL sessions
+    // We'll filter on the client side if needed
+    let query = `${SUPABASE_URL}/rest/v1/Lessons?select=*,Media(*)&order=created_at.desc&limit=100`
     
-    // If student, get all public teacher sessions
-    if (userRole === 'student') {
-      query += `&is_public=eq.true`
-    }
+    console.log(`[Supabase] Fetching sessions for ${userRole || 'unknown'} role...`)
 
     const res = await fetch(query, {
       method: "GET",
@@ -399,11 +397,12 @@ export async function loadSessionsFromSupabase(userId?: string, userRole?: 'teac
     clearTimeout(timer)
 
     if (!res.ok) {
-      console.warn("[Supabase] Failed to load sessions:", res.status)
+      console.warn("[Supabase] Failed to load sessions:", res.status, res.statusText)
       return []
     }
 
     const lessons = await res.json()
+    console.log(`[Supabase] Raw lessons from database:`, lessons.length)
     
     // Convert Supabase lessons to VICSession format
     const sessions: VICSession[] = lessons.map((lesson: any) => {
@@ -441,9 +440,18 @@ export async function loadSessionsFromSupabase(userId?: string, userRole?: 'teac
     })
 
     console.info(`[Supabase] ✓ Loaded ${sessions.length} sessions from cloud`)
+    console.info(`[Supabase] Sessions breakdown:`, {
+      total: sessions.length,
+      withRole: sessions.filter(s => s.createdByRole).length,
+      teachers: sessions.filter(s => s.createdByRole === 'teacher').length,
+      students: sessions.filter(s => s.createdByRole === 'student').length,
+      public: sessions.filter(s => s.isPublic === true).length,
+      noRole: sessions.filter(s => !s.createdByRole).length,
+    })
+    
     return sessions
   } catch (error) {
-    console.warn("[Supabase] Error loading sessions:", error)
+    console.error("[Supabase] Error loading sessions:", error)
     return []
   }
 }

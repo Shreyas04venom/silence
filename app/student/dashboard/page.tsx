@@ -24,33 +24,58 @@ function StudentDashboardContent() {
       return
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        router.push("/auth/student-login")
-        return
-      }
-
-      try {
-        const profileDoc = await getDoc(doc(firestore, "profiles", user.uid))
-        const profile = profileDoc.data()
-
-        if (!profile || profile.role !== "student") {
-          // If role is teacher, redirect to teacher dashboard
-          router.push("/dashboard")
+    // Add a small delay to ensure Firebase Auth is fully initialized
+    const checkAuth = async () => {
+      // Wait a bit for auth to initialize
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        console.log("[Student Dashboard] Auth state changed:", user ? user.email : "No user")
+        
+        if (!user) {
+          console.log("[Student Dashboard] No user, redirecting to login...")
+          router.push("/auth/student-login")
           return
         }
 
-        setUserName(profile.name || user.displayName || "Student")
-      } catch (err) {
-        console.error("Error fetching profile:", err)
-        router.push("/auth/student-login")
-        return
-      }
+        try {
+          console.log("[Student Dashboard] Checking user profile...")
+          const profileDoc = await getDoc(doc(firestore, "profiles", user.uid))
+          
+          if (!profileDoc.exists()) {
+            console.warn("[Student Dashboard] Profile not found, redirecting to login...")
+            await auth.signOut()
+            router.push("/auth/student-login")
+            return
+          }
+          
+          const profile = profileDoc.data()
+          console.log("[Student Dashboard] Profile found, role:", profile?.role)
 
-      setLoading(false)
-    })
+          if (profile.role !== "student") {
+            console.warn("[Student Dashboard] Not a student, redirecting to teacher dashboard...")
+            router.push("/dashboard")
+            return
+          }
 
-    return () => unsubscribe()
+          console.log("[Student Dashboard] ✓ Student authenticated:", user.email)
+          setUserName(profile.name || user.displayName || "Student")
+          setLoading(false)
+        } catch (err) {
+          console.error("[Student Dashboard] Error fetching profile:", err)
+          router.push("/auth/student-login")
+          return
+        }
+      })
+
+      return unsubscribe
+    }
+
+    const unsubscribePromise = checkAuth()
+    
+    return () => {
+      unsubscribePromise.then(unsub => unsub?.())
+    }
   }, [router, searchParams])
 
   if (loading) {
