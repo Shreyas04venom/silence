@@ -167,7 +167,7 @@ function getQueue(): QueuedSession[] {
 async function syncSession(session: VICSession): Promise<boolean> {
   const lessonId = crypto.randomUUID()
 
-  // 1. Insert lesson row
+  // 1. Insert lesson row with sharing metadata
   const lessonResult = await supabaseInsert("Lessons", {
     id:          lessonId,
     subject:     session.metadata.subject  || "General",
@@ -175,6 +175,9 @@ async function syncSession(session: VICSession): Promise<boolean> {
     topic:       session.metadata.topic    || session.title,
     explanation: session.explanation       || session.transcript,
     transcript:  session.transcript,
+    created_by:  session.createdBy         || null,
+    created_by_role: session.createdByRole || null,
+    is_public:   session.isPublic          || false,
   })
 
   if (!lessonResult.ok) {
@@ -360,12 +363,12 @@ export function getPendingQueueCount(): number {
   return getQueue().length
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Load sessions from Supabase to localStorage
-// Called on app start to restore sessions from database
-// ─────────────────────────────────────────────────────────────────────────────
-
-export async function loadSessionsFromSupabase(): Promise<VICSession[]> {
+/**
+ * Load sessions from Supabase - includes user's own sessions and public teacher sessions
+ * @param userId - Current user's ID (optional, for filtering)
+ * @param userRole - Current user's role ('teacher' or 'student')
+ */
+export async function loadSessionsFromSupabase(userId?: string, userRole?: 'teacher' | 'student'): Promise<VICSession[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     console.info("[Supabase] Not configured — using local sessions only")
     return []
@@ -375,7 +378,16 @@ export async function loadSessionsFromSupabase(): Promise<VICSession[]> {
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
 
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/Lessons?select=*,Media(*)&order=created_at.desc&limit=50`, {
+    // For students: load public teacher sessions + their own sessions
+    // For teachers: load only their own sessions
+    let query = `${SUPABASE_URL}/rest/v1/Lessons?select=*,Media(*)&order=created_at.desc&limit=50`
+    
+    // If student, get all public teacher sessions
+    if (userRole === 'student') {
+      query += `&is_public=eq.true`
+    }
+
+    const res = await fetch(query, {
       method: "GET",
       headers: {
         "apikey": SUPABASE_KEY,
@@ -420,7 +432,11 @@ export async function loadSessionsFromSupabase(): Promise<VICSession[]> {
           subject: lesson.subject,
           standard: lesson.standard,
           topic: lesson.topic,
-        }
+          teacher: lesson.created_by_role === 'teacher' ? 'Teacher' : undefined,
+        },
+        createdBy: lesson.created_by,
+        createdByRole: lesson.created_by_role,
+        isPublic: lesson.is_public,
       }
     })
 

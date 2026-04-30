@@ -30,6 +30,10 @@ export interface VICSession {
         topic?: string
         standard?: string
     }
+    // Session sharing fields
+    createdBy?: string // User ID of creator (teacher)
+    createdByRole?: 'teacher' | 'student' // Role of creator
+    isPublic?: boolean // If true, visible to all students
 }
 
 const STORAGE_KEY = "vic_sessions"

@@ -140,8 +140,12 @@ export function VICTeacherDashboard({ onClose }: TeacherDashboardProps) {
         setIsPaused(false)
     }
 
-    const handleSaveSession = () => {
+    const handleSaveSession = async () => {
         const duration = Date.now() - startTimeRef.current
+
+        // Get current user from Firebase
+        const { auth } = await import('@/lib/firebase')
+        const currentUser = auth?.currentUser
 
         const session: VICSession = {
             id: sessionIdRef.current,
@@ -171,9 +175,13 @@ export function VICTeacherDashboard({ onClose }: TeacherDashboardProps) {
                 }] : [],
             },
             metadata: {
-                teacher: "Demo Teacher",
+                teacher: currentUser?.displayName || currentUser?.email || "Teacher",
                 topic: transcript.trim().split(/\s+/).slice(0, 5).join(" "),
             },
+            // Session sharing - mark teacher sessions as public
+            createdBy: currentUser?.uid,
+            createdByRole: 'teacher',
+            isPublic: true, // Teacher sessions are visible to all students
         }
 
         saveSession(session)

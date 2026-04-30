@@ -41,22 +41,36 @@ export default function TeacherSignupPage() {
     }
 
     try {
+      console.log("Creating user account...")
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
       // Update Firebase Auth Profile
+      console.log("Updating user profile...")
       await updateProfile(user, { displayName: name })
 
-      // Store Role in Firestore
-      await setDoc(doc(firestore, "profiles", user.uid), {
+      // Store Role in Firestore with retry logic
+      console.log("Creating Firestore profile...")
+      const profileData = {
         name,
         email,
         role: "teacher",
         createdAt: new Date().toISOString(),
-      })
-
+      }
+      
+      await setDoc(doc(firestore, "profiles", user.uid), profileData)
+      
+      // Verify profile was created
+      console.log("Verifying profile creation...")
+      const profileDoc = await getDoc(doc(firestore, "profiles", user.uid))
+      if (!profileDoc.exists()) {
+        throw new Error("Failed to create user profile. Please try again.")
+      }
+      
+      console.log("✓ Teacher account created successfully:", user.email)
       router.push("/auth/signup-success")
     } catch (error: any) {
+      console.error("Signup error:", error)
       setError(error.message || "An error occurred during signup")
     } finally {
       setIsLoading(false)

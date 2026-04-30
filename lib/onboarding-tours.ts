@@ -32,8 +32,8 @@ export const teacherDashboardTour: TourStep[] = [
   {
     target: "[data-tour='tabs']",
     title: "Explore Generated Content",
-    description: "Switch between tabs to view explanations, images, videos, and accessibility features for your lesson.",
-    position: "bottom",
+    description: "After generating content, you'll see tabs here to switch between explanations, images, videos, and accessibility features. Try clicking 'Submit & Generate Content' first!",
+    position: "center",
     icon: "📚",
   },
   {

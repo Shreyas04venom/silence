@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app"
 import { getFirestore } from "firebase/firestore"
 import { getStorage } from "firebase/storage"
-import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth"
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence, onAuthStateChanged } from "firebase/auth"
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -28,16 +28,31 @@ if (firebaseConfig.apiKey) {
     auth = getAuth(app)
     
     // Set auth persistence to LOCAL (survives browser restarts)
-    setPersistence(auth, browserLocalPersistence).catch((error) => {
-      console.error("Failed to set auth persistence:", error)
-    })
+    setPersistence(auth, browserLocalPersistence)
+      .then(() => {
+        console.log("✓ Firebase Auth persistence set to LOCAL (browser restart safe)")
+      })
+      .catch((error) => {
+        console.error("❌ Failed to set auth persistence:", error)
+      })
+    
+    // Monitor auth state changes
+    if (typeof window !== 'undefined') {
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          console.log("✓ User is signed in:", user.email)
+        } else {
+          console.log("ℹ️ No user signed in")
+        }
+      })
+    }
     
     googleProvider = new GoogleAuthProvider()
   } catch (error) {
-    console.error("Firebase initialization failed:", error)
+    console.error("❌ Firebase initialization failed:", error)
   }
 } else {
-  console.warn("Firebase configuration is missing or incomplete in .env.local. Authentication features will not work.")
+  console.warn("⚠️ Firebase configuration is missing or incomplete in .env.local. Authentication features will not work.")
 }
 
 export { app, firestore, storage, auth, googleProvider }

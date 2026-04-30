@@ -36,17 +36,35 @@ export default function StudentLoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
-      // Verify this is a student account from Firestore
-      const profileDoc = await getDoc(doc(firestore, "profiles", user.uid))
+      // Verify this is a student account from Firestore with retry logic
+      let profileDoc = await getDoc(doc(firestore, "profiles", user.uid))
+      let retries = 0
+      const maxRetries = 3
+      
+      // Retry if profile doesn't exist (might be a timing issue)
+      while (!profileDoc.exists() && retries < maxRetries) {
+        console.log(`Profile not found, retrying... (${retries + 1}/${maxRetries})`)
+        await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
+        profileDoc = await getDoc(doc(firestore, "profiles", user.uid))
+        retries++
+      }
+      
       const profileData = profileDoc.data()
 
-      if (!profileDoc.exists() || profileData?.role !== "student") {
+      if (!profileDoc.exists()) {
         await auth.signOut()
-        throw new Error("This login is for students only.")
+        throw new Error("Account not found. Please sign up first or contact support.")
+      }
+      
+      if (profileData?.role !== "student") {
+        await auth.signOut()
+        throw new Error("This login is for students only. Please use Teacher Login.")
       }
 
+      console.log("✓ Student login successful:", user.email)
       router.push("/student/dashboard")
     } catch (error: any) {
+      console.error("Login error:", error)
       setError(error.message || "Invalid email or password")
     } finally {
       setIsLoading(false)

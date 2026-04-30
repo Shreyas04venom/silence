@@ -30,16 +30,32 @@ export function VICStudentDashboard({ onClose, isTeacher = false }: StudentDashb
 
     const loadSessionsFromCloud = async () => {
         try {
+            console.log("[Student Dashboard] Loading sessions from cloud...")
             const { loadSessionsFromSupabase } = await import('@/lib/supabase-services')
             const { mergeSessions } = await import('@/lib/session-storage')
             
-            const cloudSessions = await loadSessionsFromSupabase()
+            // Load public teacher sessions for students
+            const cloudSessions = await loadSessionsFromSupabase(undefined, 'student')
+            console.log(`[Student Dashboard] Loaded ${cloudSessions.length} sessions from cloud`)
+            
             if (cloudSessions.length > 0) {
+                console.log("[Student Dashboard] Cloud sessions:", cloudSessions.map(s => ({
+                    id: s.id,
+                    title: s.title,
+                    createdByRole: s.createdByRole,
+                    isPublic: s.isPublic,
+                    teacher: s.metadata.teacher
+                })))
                 mergeSessions(cloudSessions)
                 loadSessions() // Reload to show merged sessions
+            } else {
+                console.warn("[Student Dashboard] No cloud sessions found. Check:")
+                console.warn("1. Did teacher save sessions with 'Save Session' button?")
+                console.warn("2. Did you run the SQL migration in Supabase?")
+                console.warn("3. Are Supabase credentials correct in .env.local?")
             }
         } catch (error) {
-            console.error('Failed to load cloud sessions:', error)
+            console.error('[Student Dashboard] Failed to load cloud sessions:', error)
         }
     }
 
@@ -146,7 +162,14 @@ export function VICStudentDashboard({ onClose, isTeacher = false }: StudentDashb
                                     <CardContent className="pt-6">
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="flex-1">
-                                                <h4 className="font-semibold text-lg mb-2">{session.title}</h4>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <h4 className="font-semibold text-lg">{session.title}</h4>
+                                                    {session.createdByRole === 'teacher' && (
+                                                        <Badge variant="default" className="bg-purple-600">
+                                                            👨‍🏫 Teacher Lesson
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                                 <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
                                                     {session.transcript.slice(0, 150)}...
                                                 </p>
@@ -155,6 +178,9 @@ export function VICStudentDashboard({ onClose, isTeacher = false }: StudentDashb
                                                         <Badge variant="secondary">{session.metadata.subject}</Badge>
                                                     )}
                                                     {session.metadata.topic && <Badge variant="outline">{session.metadata.topic}</Badge>}
+                                                    {session.metadata.teacher && (
+                                                        <Badge variant="outline">By: {session.metadata.teacher}</Badge>
+                                                    )}
                                                     <Badge variant="outline" className="text-xs">
                                                         <Clock className="w-3 h-3 mr-1" />
                                                         {formatDuration(session.duration)}
