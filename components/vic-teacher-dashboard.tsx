@@ -26,6 +26,8 @@ import { buildAnimationSrcDoc } from "@/lib/educational-animation"
 import { saveSessionToSupabase, flushQueue, getPendingQueueCount } from "@/lib/supabase-services"
 import { YouTubeNativePlayer } from "@/components/youtube-native-player"
 import { GeneratedAnimationPlayer } from "@/components/generated-animation-player"
+import { OnboardingTour } from "@/components/onboarding-tour"
+import { teacherDashboardTour, hasCompletedOnboarding, markOnboardingComplete } from "@/lib/onboarding-tours"
 
 interface TeacherDashboardProps {
     onClose: () => void
@@ -42,6 +44,7 @@ export function VICTeacherDashboard({ onClose }: TeacherDashboardProps) {
         "explanation"
     )
     const [isViewingSessions, setIsViewingSessions] = useState(false)
+    const [showOnboarding, setShowOnboarding] = useState(false)
 
     // Generated content (matching generate-content API response shape)
     const [explanation, setExplanation] = useState<string | null>(null)
@@ -72,6 +75,11 @@ export function VICTeacherDashboard({ onClose }: TeacherDashboardProps) {
     useEffect(() => {
         // Flush any offline-queued sessions silently on dashboard open
         flushQueue().catch(() => null)
+
+        // Check if user needs onboarding
+        if (!hasCompletedOnboarding("teacher")) {
+            setShowOnboarding(true)
+        }
 
         return () => {
             if (isRecording) {
@@ -285,7 +293,23 @@ export function VICTeacherDashboard({ onClose }: TeacherDashboardProps) {
     }
 
     return (
-        <div className="space-y-6">
+        <>
+            {showOnboarding && (
+                <OnboardingTour
+                    steps={teacherDashboardTour}
+                    tourName="teacher-dashboard"
+                    onComplete={() => {
+                        markOnboardingComplete("teacher")
+                        setShowOnboarding(false)
+                    }}
+                    onSkip={() => {
+                        markOnboardingComplete("teacher")
+                        setShowOnboarding(false)
+                    }}
+                />
+            )}
+            
+            <div className="space-y-6" data-tour="welcome">
             {/* Recording Controls */}
             <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20">
                 <CardHeader>
@@ -310,7 +334,7 @@ export function VICTeacherDashboard({ onClose }: TeacherDashboardProps) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-3" data-tour="record-button">
                         {!isRecording ? (
                             <Button onClick={handleStartRecording} size="lg" className="gap-2 bg-green-600 hover:bg-green-700">
                                 <Mic className="w-5 h-5" />
@@ -342,6 +366,7 @@ export function VICTeacherDashboard({ onClose }: TeacherDashboardProps) {
                             size="lg"
                             className="gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg"
                             disabled={isGenerating || !conceptText}
+                            data-tour="generate-button"
                         >
                             {isGenerating ? (
                                 <>
@@ -362,6 +387,7 @@ export function VICTeacherDashboard({ onClose }: TeacherDashboardProps) {
                             variant="outline"
                             className="gap-2"
                             disabled={!conceptText}
+                            data-tour="save-button"
                         >
                             {saveStatus === 'saving' ? (
                                 <><Loader2 className="w-5 h-5 animate-spin" />Saving…</>
@@ -389,6 +415,7 @@ export function VICTeacherDashboard({ onClose }: TeacherDashboardProps) {
                             size="lg"
                             variant="secondary"
                             className="gap-2"
+                            data-tour="sessions-button"
                         >
                             {isViewingSessions ? (
                                 <>
@@ -408,7 +435,7 @@ export function VICTeacherDashboard({ onClose }: TeacherDashboardProps) {
                     </div>
 
                     {/* Live Transcript (editable) */}
-                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 min-h-[100px] max-h-[200px] overflow-y-auto">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 min-h-[100px] max-h-[200px] overflow-y-auto" data-tour="transcript">
                         <p className="text-sm font-semibold mb-2 flex items-center gap-2">
                             <Badge variant={isRecording ? "default" : "secondary"}>
                                 {isRecording ? "Recording..." : "Stopped"}
@@ -440,7 +467,7 @@ export function VICTeacherDashboard({ onClose }: TeacherDashboardProps) {
             {/* Generated Content Tabs */}
             {(explanation || isGenerating) && (
                 <div className="space-y-4">
-                    <div className="flex gap-2 border-b border-border overflow-x-auto">
+                    <div className="flex gap-2 border-b border-border overflow-x-auto" data-tour="tabs">
                         {["explanation", "images", "videos", "accessibility"].map((tab) => (
                             <button
                                 key={tab}
@@ -662,5 +689,6 @@ export function VICTeacherDashboard({ onClose }: TeacherDashboardProps) {
                 </Card>
             )}
         </div>
+        </>
     )
 }
