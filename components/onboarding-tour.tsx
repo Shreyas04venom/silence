@@ -8,7 +8,7 @@ export interface TourStep {
   target: string // CSS selector for the element to highlight
   title: string
   description: string
-  position?: "top" | "bottom" | "left" | "right"
+  position?: "top" | "bottom" | "left" | "right" | "center"
   icon?: string
 }
 
@@ -23,9 +23,14 @@ export function OnboardingTour({ steps, onComplete, onSkip, tourName }: Onboardi
   const [currentStep, setCurrentStep] = useState(0)
   const [isVisible, setIsVisible] = useState(true)
   const [highlightPosition, setHighlightPosition] = useState({ top: 0, left: 0, width: 0, height: 0 })
+  const [cardPosition, setCardPosition] = useState({ top: 0, left: 0 })
 
   useEffect(() => {
-    updateHighlightPosition()
+    // Small delay to ensure DOM is ready
+    setTimeout(() => {
+      updateHighlightPosition()
+    }, 100)
+    
     window.addEventListener("resize", updateHighlightPosition)
     window.addEventListener("scroll", updateHighlightPosition)
     
@@ -42,16 +47,79 @@ export function OnboardingTour({ steps, onComplete, onSkip, tourName }: Onboardi
     const element = document.querySelector(step.target)
     if (element) {
       const rect = element.getBoundingClientRect()
+      const scrollTop = window.scrollY || document.documentElement.scrollTop
+      const scrollLeft = window.scrollX || document.documentElement.scrollLeft
+      
       setHighlightPosition({
-        top: rect.top + window.scrollY,
-        left: rect.left + window.scrollX,
+        top: rect.top + scrollTop,
+        left: rect.left + scrollLeft,
         width: rect.width,
         height: rect.height,
       })
       
+      // Calculate card position based on step position preference
+      calculateCardPosition(rect, step.position || "bottom", scrollTop, scrollLeft)
+      
       // Scroll element into view smoothly
-      element.scrollIntoView({ behavior: "smooth", block: "center" })
+      element.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" })
+    } else {
+      // If element not found, show card in center
+      setCardPosition({
+        top: window.innerHeight / 2 - 200,
+        left: window.innerWidth / 2 - 200,
+      })
     }
+  }
+
+  const calculateCardPosition = (
+    rect: DOMRect, 
+    position: string, 
+    scrollTop: number, 
+    scrollLeft: number
+  ) => {
+    const cardWidth = 400
+    const cardHeight = 350
+    const padding = 20
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+
+    let top = 0
+    let left = 0
+
+    switch (position) {
+      case "bottom":
+        top = rect.bottom + scrollTop + padding
+        left = rect.left + scrollLeft + (rect.width / 2) - (cardWidth / 2)
+        break
+      case "top":
+        top = rect.top + scrollTop - cardHeight - padding
+        left = rect.left + scrollLeft + (rect.width / 2) - (cardWidth / 2)
+        break
+      case "right":
+        top = rect.top + scrollTop + (rect.height / 2) - (cardHeight / 2)
+        left = rect.right + scrollLeft + padding
+        break
+      case "left":
+        top = rect.top + scrollTop + (rect.height / 2) - (cardHeight / 2)
+        left = rect.left + scrollLeft - cardWidth - padding
+        break
+      case "center":
+      default:
+        top = scrollTop + (viewportHeight / 2) - (cardHeight / 2)
+        left = scrollLeft + (viewportWidth / 2) - (cardWidth / 2)
+        break
+    }
+
+    // Ensure card stays within viewport bounds
+    const minLeft = scrollLeft + padding
+    const maxLeft = scrollLeft + viewportWidth - cardWidth - padding
+    const minTop = scrollTop + padding
+    const maxTop = scrollTop + viewportHeight - cardHeight - padding
+
+    left = Math.max(minLeft, Math.min(maxLeft, left))
+    top = Math.max(minTop, Math.min(maxTop, top))
+
+    setCardPosition({ top, left })
   }
 
   const handleNext = () => {
@@ -89,60 +157,60 @@ export function OnboardingTour({ steps, onComplete, onSkip, tourName }: Onboardi
 
   return (
     <>
-      {/* Dark overlay */}
+      {/* Dark overlay with higher z-index */}
       <div 
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9998] transition-opacity duration-300"
-        style={{ opacity: isVisible ? 1 : 0 }}
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-300"
+        style={{ 
+          zIndex: 9998,
+          opacity: isVisible ? 1 : 0 
+        }}
       />
 
-      {/* Spotlight highlight */}
+      {/* Spotlight highlight - positioned absolutely */}
       <div
-        className="fixed z-[9999] pointer-events-none transition-all duration-500 ease-out"
+        className="fixed pointer-events-none transition-all duration-500 ease-out"
         style={{
+          zIndex: 9999,
           top: `${highlightPosition.top - 8}px`,
           left: `${highlightPosition.left - 8}px`,
           width: `${highlightPosition.width + 16}px`,
           height: `${highlightPosition.height + 16}px`,
-          boxShadow: "0 0 0 4px rgba(99, 102, 241, 0.5), 0 0 0 9999px rgba(0, 0, 0, 0.7)",
+          boxShadow: "0 0 0 4px rgba(99, 102, 241, 0.6), 0 0 0 9999px rgba(0, 0, 0, 0.75)",
           borderRadius: "12px",
         }}
       />
 
       {/* Animated pulse ring */}
       <div
-        className="fixed z-[9999] pointer-events-none animate-ping"
+        className="fixed pointer-events-none"
         style={{
+          zIndex: 9999,
           top: `${highlightPosition.top - 12}px`,
           left: `${highlightPosition.left - 12}px`,
           width: `${highlightPosition.width + 24}px`,
           height: `${highlightPosition.height + 24}px`,
-          border: "3px solid rgba(99, 102, 241, 0.6)",
+          border: "3px solid rgba(99, 102, 241, 0.8)",
           borderRadius: "14px",
+          animation: "ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite",
         }}
       />
 
-      {/* Tour card */}
+      {/* Tour card - positioned absolutely with calculated position */}
       <div
-        className="fixed z-[10000] animate-in fade-in slide-in-from-bottom-4 duration-500"
+        className="fixed animate-in fade-in slide-in-from-bottom-4 duration-500"
         style={{
-          top: step.position === "bottom" 
-            ? `${highlightPosition.top + highlightPosition.height + 20}px`
-            : step.position === "top"
-            ? `${highlightPosition.top - 280}px`
-            : `${highlightPosition.top}px`,
-          left: step.position === "right"
-            ? `${highlightPosition.left + highlightPosition.width + 20}px`
-            : step.position === "left"
-            ? `${highlightPosition.left - 420}px`
-            : `${Math.max(20, highlightPosition.left + highlightPosition.width / 2 - 200)}px`,
-          maxWidth: "400px",
+          zIndex: 10000,
+          top: `${cardPosition.top}px`,
+          left: `${cardPosition.left}px`,
+          width: "400px",
+          maxWidth: "calc(100vw - 40px)",
         }}
       >
-        <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-2xl p-6 text-white relative overflow-hidden">
+        <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-2xl shadow-2xl p-6 text-white relative overflow-hidden">
           {/* Animated background pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 left-0 w-40 h-40 bg-white rounded-full blur-3xl animate-pulse" />
-            <div className="absolute bottom-0 right-0 w-40 h-40 bg-white rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full blur-3xl animate-pulse" />
+            <div className="absolute bottom-0 right-0 w-32 h-32 bg-white rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
           </div>
 
           {/* Close button */}

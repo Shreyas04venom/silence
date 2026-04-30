@@ -5,7 +5,7 @@ export const teacherDashboardTour: TourStep[] = [
     target: "[data-tour='welcome']",
     title: "Welcome to Silent Classrooms! 👋",
     description: "Let's take a quick tour to help you get started with creating visual lessons for deaf and hard-of-hearing students.",
-    position: "bottom",
+    position: "center",
     icon: "🎓",
   },
   {
@@ -19,7 +19,7 @@ export const teacherDashboardTour: TourStep[] = [
     target: "[data-tour='transcript']",
     title: "Live Transcript",
     description: "Your speech is converted to text in real-time. You can edit the transcript directly if needed.",
-    position: "top",
+    position: "bottom",
     icon: "📝",
   },
   {
