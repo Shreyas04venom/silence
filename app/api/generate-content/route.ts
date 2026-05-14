@@ -161,46 +161,85 @@ export async function POST(request: NextRequest) {
         const searchQuery = `${topic} educational diagram labeled visual explanation`;
         const q = encodeURIComponent(searchQuery);
         
-        // 1. Fetch DuckDuckGo HTML to extract the VQD token
-        const htmlRes = await fetch(`https://duckduckgo.com/?q=${q}&t=h_&iar=images&iax=images&ia=images`, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-          }
-        });
-        const htmlText = await htmlRes.text();
-        const vqdMatch = htmlText.match(/vqd=([\d-]+)/);
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000); // 8 second timeout
         
-        if (vqdMatch && vqdMatch[1]) {
-          // 2. Fetch the actual JSON image payload using the token
-          const vqd = vqdMatch[1];
-          const imgRes = await fetch(`https://duckduckgo.com/i.js?l=us-en&o=json&q=${q}&vqd=${vqd}&f=,,,&p=1`, {
+        try {
+          // 1. Fetch DuckDuckGo HTML to extract the VQD token
+          const htmlRes = await fetch(`https://duckduckgo.com/?q=${q}&t=h_&iar=images&iax=images&ia=images`, {
             headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.5',
+              'Referer': 'https://duckduckgo.com/',
+            },
+            signal: controller.signal
           });
-          const imgData = await imgRes.json();
           
-          if (imgData.results && imgData.results.length > 0) {
-            // Try to find the best educational image
-            const educationalImage = imgData.results.find((img: any) => 
-              img.image && (
-                img.title?.toLowerCase().includes('diagram') ||
-                img.title?.toLowerCase().includes('education') ||
-                img.title?.toLowerCase().includes(topic.toLowerCase())
-              )
-            ) || imgData.results[0];
-            
-            imageUrl = educationalImage.image;
-            usedSearchEngine = true;
-            console.log("[Generate Content] ✅ Found educational image via DuckDuckGo:", imageUrl);
-          } else {
-            console.log("[Generate Content] No images found in DuckDuckGo results.");
+          clearTimeout(timeout);
+          
+          if (!htmlRes.ok) {
+            throw new Error(`DuckDuckGo HTML fetch failed: ${htmlRes.status}`);
           }
-        } else {
-          console.warn("[Generate Content] Could not extract DuckDuckGo VQD token.");
+          
+          const htmlText = await htmlRes.text();
+          const vqdMatch = htmlText.match(/vqd=([\d-]+)/);
+          
+          if (vqdMatch && vqdMatch[1]) {
+            // 2. Fetch the actual JSON image payload using the token
+            const vqd = vqdMatch[1];
+            console.log("[Generate Content] VQD token extracted:", vqd);
+            
+            const imgTimeout = setTimeout(() => controller.abort(), 8000);
+            const imgRes = await fetch(`https://duckduckgo.com/i.js?l=us-en&o=json&q=${q}&vqd=${vqd}&f=,,,&p=1`, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json',
+                'Referer': 'https://duckduckgo.com/',
+              },
+              signal: controller.signal
+            });
+            clearTimeout(imgTimeout);
+            
+            if (!imgRes.ok) {
+              throw new Error(`DuckDuckGo image API failed: ${imgRes.status}`);
+            }
+            
+            const imgData = await imgRes.json();
+            console.log("[Generate Content] DuckDuckGo returned", imgData.results?.length || 0, "images");
+            
+            if (imgData.results && imgData.results.length > 0) {
+              // Try to find the best educational image
+              const educationalImage = imgData.results.find((img: any) => 
+                img.image && (
+                  img.title?.toLowerCase().includes('diagram') ||
+                  img.title?.toLowerCase().includes('education') ||
+                  img.title?.toLowerCase().includes('labeled') ||
+                  img.title?.toLowerCase().includes(topic.toLowerCase())
+                )
+              ) || imgData.results[0];
+              
+              if (educationalImage && educationalImage.image) {
+                imageUrl = educationalImage.image;
+                usedSearchEngine = true;
+                console.log("[Generate Content] ✅ Found educational image via DuckDuckGo:", imageUrl);
+              }
+            } else {
+              console.log("[Generate Content] No images found in DuckDuckGo results.");
+            }
+          } else {
+            console.warn("[Generate Content] Could not extract DuckDuckGo VQD token from HTML.");
+          }
+        } catch (fetchError: any) {
+          if (fetchError.name === 'AbortError') {
+            console.warn("[Generate Content] DuckDuckGo request timed out");
+          } else {
+            throw fetchError;
+          }
         }
-      } catch (err) {
-        console.error("[Generate Content] DuckDuckGo image search error:", err);
+      } catch (err: any) {
+        console.error("[Generate Content] DuckDuckGo image search error:", err.message || err);
       }
       
       // Fallback to AI-generated SVG if DuckDuckGo search fails
@@ -210,7 +249,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log("[Generate Content] Image URL:", imageUrl, matchedAssets.imageUrl ? "(pre-generated)" : "(dynamic)")
+    console.log("[Generate Content] Image URL:", imageUrl, matchedAssets.imageUrl ? "(pre-generated)" : usedSearchEngine ? "(DuckDuckGo)" : "(AI-generated)")
 
     // Build animation URL:
     // Priority 1: YouTube animated video (native player)
