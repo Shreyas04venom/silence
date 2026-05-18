@@ -148,8 +148,8 @@ function buildFallbackEducationalContent(
   const contextDescriptor = buildContextDescriptor(standard, subject, chapter)
   const contextSentence = contextDescriptor ? ` It is being taught in ${contextDescriptor}.` : ""
   const explanation = [
-    `${displayTitle} is explained here with a simple visual sequence so students can quickly understand the main idea.${contextSentence} Start by identifying the main parts, the starting condition, and the change that takes place.`,
-    `Then follow the process step by step to see what causes the result, what changes in the middle, and why the concept matters in real life. This fallback lesson keeps the structure clear even when cloud AI is unavailable.`,
+    `${displayTitle} is an important concept that helps us understand how things work in the world around us.${contextSentence} Think of it as a process with a clear beginning, middle, and end - just like following a recipe or building something step by step.`,
+    `To understand ${displayTitle}, start by looking at what you begin with (the inputs), then see what happens during the main process (the transformation), and finally observe what you end up with (the results). This step-by-step approach makes even complex ideas easier to grasp and shows why this concept matters in everyday life.`,
   ].join("\n\n")
 
   return {
@@ -233,14 +233,29 @@ export async function generateEducationalContent(
     return fallback
   }
 
-  const prompt = `You create visual learning content for deaf students.
+  const prompt = `You create visual learning content for deaf and hard-of-hearing students (grades 6-8).
 Return ONLY valid JSON. No markdown. No code fences.
 
 Topic: "${topic}"${contextStr}
 
+CRITICAL EXPLANATION REQUIREMENTS:
+Your explanation must be:
+1. SIMPLE & CLEAR: Use everyday language. Avoid jargon. If you must use technical terms, define them immediately in simple words.
+2. VISUAL & CONCRETE: Describe what students can SEE, TOUCH, or EXPERIENCE. Use real-world examples they encounter daily.
+3. STEP-BY-STEP: Break complex ideas into small, logical steps. Use "First...", "Then...", "Finally..." structure.
+4. RELEVANT: Connect to students' lives. Answer "Why does this matter to ME?" Show practical applications.
+5. STRUCTURED: 
+   - Paragraph 1: What it is + Simple definition + Real-life example
+   - Paragraph 2: How it works step-by-step + Why it matters in daily life
+
+EXPLANATION STYLE GUIDE:
+✓ GOOD: "Photosynthesis is how plants make their own food using sunlight. Think of it like a plant's kitchen where sunlight is the energy source. First, the plant's leaves capture sunlight like solar panels. Then, they mix this energy with water from the soil and carbon dioxide from the air. Finally, this creates sugar (food) and releases oxygen that we breathe."
+
+✗ BAD: "Photosynthesis is the biochemical process by which chloroplasts convert light energy into chemical energy through the Calvin cycle and light-dependent reactions."
+
 Requirements:
-- explanation: 2 concise classroom-friendly paragraphs. Explain what the concept is, how it works, and why it matters.
-- imagePrompt: 1 sentence for a conceptual educational diagram with labels and arrows.
+- explanation: 2 paragraphs (4-6 sentences each). Follow the structure above. Use analogies, comparisons, and real-world examples. Target reading level: grades 6-8.
+- imagePrompt: 1 sentence for a conceptual educational diagram with clear labels and arrows showing the process.
 - detailedIllustrationSVG: REAL SVG only. Use visible shapes such as <rect>, <circle>, <path>, <line>, <text>, <polygon>. Minimum 600 characters.
 - signLanguageSVG: REAL SVG only. Show a topic-specific 3-step or 4-step signing guide in separate columns so labels and hands do not overlap.
 - visualTranscript: 4 short timestamped lines for a clean storyboard, for example:
@@ -259,7 +274,7 @@ Quality rules:
 
 Return exactly this JSON shape:
 {
-  "explanation": "Clear explanation of ${topic}",
+  "explanation": "Clear, simple, student-friendly explanation of ${topic} with real-world examples and step-by-step breakdown",
   "imagePrompt": "Conceptual educational diagram prompt for ${topic}",
   "detailedIllustrationSVG": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 500'>...</svg>",
   "signLanguageSVG": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 700 400'>...</svg>",

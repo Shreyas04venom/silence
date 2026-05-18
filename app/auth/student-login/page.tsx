@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { auth, firestore, googleProvider } from "@/lib/firebase"
-import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth"
+import { signInWithEmailAndPassword, signInWithPopup, signInWithRedirect } from "firebase/auth"
 import { doc, getDoc, setDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -105,6 +105,15 @@ export default function StudentLoginPage() {
     } catch (error: any) {
       console.error("Student Google login error:", error)
       setError(error.message || "Google login failed")
+      
+      try {
+        console.log("Falling back to signInWithRedirect due to popup failure")
+        await signInWithRedirect(auth, googleProvider)
+        return
+      } catch (redirErr: any) {
+        console.error("signInWithRedirect also failed:", redirErr)
+        setError(redirErr?.message || error?.message || "Google login failed")
+      }
     } finally {
       setIsGoogleLoading(false)
     }

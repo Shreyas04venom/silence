@@ -392,6 +392,11 @@ export async function loadSessionsFromSupabase(userId?: string, userRole?: 'teac
         "Authorization": `Bearer ${SUPABASE_KEY}`,
       },
       signal: ctrl.signal,
+    }).catch((fetchError) => {
+      // Handle fetch errors gracefully
+      console.warn("[Supabase] Fetch error:", fetchError.message)
+      clearTimeout(timer)
+      throw new Error(`Network error: ${fetchError.message}`)
     })
 
     clearTimeout(timer)

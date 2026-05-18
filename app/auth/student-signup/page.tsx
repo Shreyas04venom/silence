@@ -2,8 +2,8 @@
 
 import type React from "react"
 import { auth, firestore, googleProvider } from "@/lib/firebase"
-import { createUserWithEmailAndPassword, signInWithPopup, updateProfile } from "firebase/auth"
-import { doc, setDoc } from "firebase/firestore"
+import { createUserWithEmailAndPassword, signInWithPopup, signInWithRedirect, updateProfile } from "firebase/auth"
+import { doc, getDoc, setDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -102,7 +102,15 @@ export default function StudentSignupPage() {
       router.push("/student/dashboard")
     } catch (error: any) {
       console.error("Google signup error:", error)
-      setError(error.message || "Google signup failed")
+
+      try {
+        console.log("Falling back to signInWithRedirect due to popup failure")
+        await signInWithRedirect(auth, googleProvider)
+        return
+      } catch (redirErr: any) {
+        console.error("signInWithRedirect also failed:", redirErr)
+        setError(redirErr?.message || error?.message || "Google signup failed")
+      }
     } finally {
       setIsGoogleLoading(false)
     }
